@@ -10,45 +10,85 @@ int main(int argc, const char *argv[])
 {
 	double b = 1;
 	// Nx, Ny and Nz cannot be 1 or less
-	int Nx = 3;
-	int Ny = 3;
-	int Nz = 3;
-	int cubes = (Nx-1)*(Ny-1)*(Nz-1);
-	int bAtomsYZ = (Nz-1)*Nx + (Nz-1)*(Nx-1);
-	int bAtomsXZ = (Ny-1)*Nz + (Ny-1)*(Nz-1);
-	int bAtomsXY = (Nx-1)*Ny + (Nx-1)*(Ny-1);
+	int Nc = 2;
+	int cubes = (Nc-1)*(Nc-1)*(Nc-1);
+	// Three sides with pairs of atoms
+	int atomsSide = 2*3*(Nc-1)*(Nc-1);
 
-	int atoms = cubes*4 + bAtomsXY + bAtomsXZ + bAtomsYZ + 1;
+	// Atoms from all the unit cells, then add the sides except 
+	// the edges, then add the edges (they overlap on the last atom)
+	int atoms = cubes*4 + atomsSide + 3*Nc - 2;
+
 	Matrix r = Matrix(atoms,3);
 	// Initiate r vector
-	int cubeIndex = 0;
-	for (int k = 0; k < Nz-1; k++) {
-		for (int j = 0; j < Ny-1; j++) {
-			for (int i = 0; i < Nx-1; i++) {
-				cubeIndex = k*((Ny-1)*(Nx-1))+j*(Nx-1)+i;
-				r(cubeIndex,0) = i*b;
-				r(cubeIndex,1) = j*b;
-				r(cubeIndex,2) = k*b;
+	int index = 0;
+	for (int k = 0; k < Nc-1; k++) {
+		for (int j = 0; j < Nc-1; j++) {
+			for (int i = 0; i < Nc-1; i++) {
+				//cubeIndex = k*((Nc-1)*(Nc-1))+j*(Nc-1)+i;
+				//cubeIndex = 4*cubeIndex;
 
-				r(cubeIndex+1,0) = i*b + 0.5*b;
-				r(cubeIndex+1,1) = j*b + 0.5*b;
-				r(cubeIndex+1,2) = k*b;
+				r(index,0) = i*b;
+				r(index,1) = j*b;
+				r(index,2) = k*b;
+				index++;
 
-				r(cubeIndex+2,0) = i*b;
-				r(cubeIndex+2,1) = j*b + 0.5*b;
-				r(cubeIndex+2,2) = k*b + 0.5*b;
+				r(index,0) = i*b + 0.5*b;
+				r(index,1) = j*b + 0.5*b;
+				r(index,2) = k*b;
+				index++;
 
-				r(cubeIndex+3,0) = i*b + 0.5*b;
-				r(cubeIndex+3,1) = j*b;
-				r(cubeIndex+3,2) = k*b + 0.5*b;
+				r(index,0) = i*b;
+				r(index,1) = j*b + 0.5*b;
+				r(index,2) = k*b + 0.5*b;
+				index++;
+
+				r(index,0) = i*b + 0.5*b;
+				r(index,1) = j*b;
+				r(index,2) = k*b + 0.5*b;
+				index++
 			}
 		}
 	}
-	int index = cubes*4;
-	for (int j = 0; j < Ny; j++) {
-		for (int k = 0; k < Nz; k++) {
-			// TODO continue, this is where i stopped
-			r(index+)
+	// TODO I stopped here, I changed the limits to Nc
+	// and I need to merge these three loops. 
+	
+	// Add position of atoms on the sides
+	for (int j = 0; j < Nc-1; j++) {
+		for (int k = 0; k < Nc-1; k++) {
+			r(index,0) = Nx*b;
+			r(index,1) =  j*b;
+			r(index,2) =  k*b;
+			index++;
+			
+			r(index,0) = Nx*b;
+			r(index,1) =  j*b + 0.5*b;
+			r(index,2) =  k*b + 0.5*b;
+			index++
+		}
+	}
+	for (int i = 0; i < Nc-1; i++) {
+		for (int k = 0; k < Nc-1; k++) {
+			r(index,0) =  i*b;
+			r(index,1) = Ny*b;
+			r(index,2) =  k*b;
+			index++
+			
+			r(index,0) =  i*b + 0.5*b;
+			r(index,1) = Ny*b;
+			r(index,2) =  k*b + 0.5*b;
+			index++
+		}
+	}
+	for (int i = 0; i < Nc-1; i++) {
+		for (int j = 0; j < Nc-1; j++) {
+			r(index,0) =  i*b;
+			r(index,1) =  j*b;
+			r(index,2) = Nz*b;
+			
+			r(index,0) =  i*b + 0.5*b;
+			r(index,1) =  j*b + 0.5*b;
+			r(index,2) = Nz*b;
 		}
 	}
 
