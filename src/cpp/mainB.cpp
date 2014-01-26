@@ -17,7 +17,7 @@ int main(int argc, const char *argv[])
 	// edges (they overlap on the last atom)
 	long	seed 	= 123;
 	double 	b 	= 5.260;
-	int 	Nc 	= 3;
+	int 	Nc 	= 2;
 	int 	cubes 	= (Nc-1)*(Nc-1)*(Nc-1);
 	int 	atomsSide = 2*3*(Nc-1)*(Nc-1);
 	int 	atoms 	= cubes*4 + atomsSide + 3*Nc - 2;
