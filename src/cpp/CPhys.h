@@ -1,6 +1,9 @@
 #include "Matrix.h"
 #include "physical.h"
 namespace CPhys{
+	namespace Lattice{
+		Matrix	getFCC(int Nc, double dist);
+	}
 	namespace LinAlg{
 		Vector	tridiagSolve(double a, double b, double c, Vector y);
 	}

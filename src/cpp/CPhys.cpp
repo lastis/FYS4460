@@ -8,6 +8,103 @@
 using namespace std;
 using namespace CPhys;
 
+Matrix	Lattice::getFCC(int Nc, double dist){
+	// NOTES:
+	// Nc cannot be less than 1
+	// Counting is done by adding all atoms from all unit cells
+	// then adding the sides except the edges, then add the 
+	// edges (they overlap on the last atom)
+	int 	cubes 	= (Nc-1)*(Nc-1)*(Nc-1);
+	int 	atomsSide = 2*3*(Nc-1)*(Nc-1);
+	int 	atoms 	= cubes*4 + atomsSide + 3*Nc - 2;
+	double 	b = dist;
+	Matrix 	r = Matrix(atoms,3);
+	// Initiate r vector
+	int index = 0;
+	for (int k = 0; k < Nc-1; k++) {
+		for (int j = 0; j < Nc-1; j++) {
+			for (int i = 0; i < Nc-1; i++) {
+				r(index,0) = i*b;
+				r(index,1) = j*b;
+				r(index,2) = k*b;
+				index++;
+
+				r(index,0) = i*b + 0.5*b;
+				r(index,1) = j*b + 0.5*b;
+				r(index,2) = k*b;
+				index++;
+
+				r(index,0) = i*b;
+				r(index,1) = j*b + 0.5*b;
+				r(index,2) = k*b + 0.5*b;
+				index++;
+
+				r(index,0) = i*b + 0.5*b;
+				r(index,1) = j*b;
+				r(index,2) = k*b + 0.5*b;
+				index++;
+			}
+		}
+	}
+	
+	// Add position of atoms on the sides
+	for (int x = 0; x < Nc-1; x++) {
+		for (int y = 0; y < Nc-1; y++) {
+			r(index,0) = (Nc-1)*b;
+			r(index,1) =  x*b;
+			r(index,2) =  y*b;
+			index++;
+			
+			r(index,0) = (Nc-1)*b;
+			r(index,1) =  x*b + 0.5*b;
+			r(index,2) =  y*b + 0.5*b;
+			index++;
+
+			r(index,0) =  x*b;
+			r(index,1) = (Nc-1)*b;
+			r(index,2) =  y*b;
+			index++;
+			
+			r(index,0) =  x*b + 0.5*b;
+			r(index,1) = (Nc-1)*b;
+			r(index,2) =  y*b + 0.5*b;
+			index++;
+
+			r(index,0) =  x*b;
+			r(index,1) =  y*b;
+			r(index,2) = (Nc-1)*b;
+			index++;
+			
+			r(index,0) =  x*b + 0.5*b;
+			r(index,1) =  y*b + 0.5*b;
+			r(index,2) = (Nc-1)*b;
+			index++;
+		}
+	}
+
+	// Add position of atoms on the edges
+	for (int a = 0; a < Nc-1; a++) {
+		r(index, 0) = (Nc-1)*b;
+		r(index, 1) = a*b;
+		r(index, 2) = (Nc-1)*b;
+		index++;
+		
+		r(index, 0) = a*b;
+		r(index, 1) = (Nc-1)*b;
+		r(index, 2) = (Nc-1)*b;
+		index++;
+		
+		r(index, 0) = (Nc-1)*b;
+		r(index, 1) = (Nc-1)*b;
+		r(index, 2) = a*b;
+		index++;
+	}
+	// Add the last atom on the crossing of the edges
+	r(index,0) = (Nc-1)*b;
+	r(index,1) = (Nc-1)*b;
+	r(index,2) = (Nc-1)*b;
+	return r;
+}
 
 double Random::ran0(long &seed)
 {
