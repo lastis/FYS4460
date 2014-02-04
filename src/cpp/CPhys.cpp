@@ -14,8 +14,7 @@ Matrix	Lattice::getFCC(int Nc, double dist){
 	// Counting is done by adding all atoms from all unit cells
 	// then adding the sides except the edges, then add the 
 	// edges (they overlap on the last atom)
-	int 	cubes 	= Nc*Nc*Nc;
-	int 	atoms 	= 4*cubes;
+	int 	atoms 	= 4*Nc*Nc*Nc;
 	double 	b = dist;
 	Matrix 	r = Matrix(atoms,3);
 	// Initiate r vector
