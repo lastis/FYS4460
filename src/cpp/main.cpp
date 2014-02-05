@@ -17,6 +17,8 @@ void verlet     (double**       r, double**     v, double**       a,
 void printToFile(double**       r, double**     v, int        atoms, 
 		 int 	    frame, int      width, int    precision);
 
+double*** box;
+
 int main(int argc, const char *argv[]) {
 	// NOTES:
 	// Nc cannot be less than 1
@@ -46,6 +48,12 @@ int main(int argc, const char *argv[]) {
 	// Output
 	int	width 		= 16;
 	int 	precision 	= 8;
+	// TODO
+	// Allocate memory for box array
+	box = new double**[Nc];
+	double **ptr1 = new double*[Nc];
+	double *ptr2 = new double[Nc*Nc*Nc];
+	
 
 	// Initialize the velocities
 	double 	vel = 0;
@@ -111,6 +119,35 @@ void verlet(double**  r, double**     v, double**       a,
 			r[i][0] += vHalf[0]*dt;
 			r[i][1] += vHalf[1]*dt;
 			r[i][2] += vHalf[2]*dt;
+
+			// TODO
+			// Remove
+			// The next value, B, in the list from the value A 
+			// is get by "B = pointer(A)"
+			remValue = 20;
+			if(box(1,1,1) == remValue){
+				box(1,1,1) = pointer(box(1,1,1));
+			}
+			cur = box(1,1,1);
+			prev = -1;
+			while(cur != remValue){
+				prev = cur;
+				// Skip to next value
+				cur = pointer(cur);
+				// If this statement is true, the value is not
+				// in the list
+				if(cur == -1) return;
+			}
+			//Found value
+			pointer(prev) = pointer(cur);
+			// Now nothing is pointing at cur
+
+			// Add
+			temp = box(1,1,1);
+			box(1,1,1) = new;
+			pointer(new) = temp;
+
+
 
 			// Periodic boundry conditions
 			if(r[i][0] > boxSize){
