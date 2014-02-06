@@ -38,7 +38,7 @@ int main(int argc, const char *argv[]) {
 	double	v0	= sqrt(e0/m);
 	double	stdDev 	= sqrt(K_B*T/m);
 	// Atoms
-	int 	Nc 	= 16;
+	int 	Nc 	= 14;
 	int	atoms 	= 4*Nc*Nc*Nc;
 	double	L = b*Nc;
 	// Vectors
@@ -52,8 +52,8 @@ int main(int argc, const char *argv[]) {
 	int	width 		= 16;
 	int 	precision 	= 8;
 	// Allocate memory for box array
-	boxes = 4;
-	boxSize = L/boxes;
+	boxSize = 3*sigma;
+	boxes = L/boxSize + 1;
 	box = Cube(boxes,boxes,boxes);
 
 	pointer = Vector(atoms).getArrayPointer();
@@ -124,29 +124,6 @@ void refreshBoxes(double** r, int atoms, double L){
 		pointer[i] = box(x,y,z);
 		box(x,y,z) = i;
 	}
-
-	/*
-	// Remove
-	// The next value, B, in the list from the value A 
-	// is get by "B = pointer(A)"
-	remValue = 20;
-	if(box(1,1,1) == remValue){
-		box(1,1,1) = pointer(box(1,1,1));
-	}
-	cur = box(1,1,1);
-	prev = -1;
-	while(cur != remValue){
-		prev = cur;
-		// Skip to next value
-		cur = pointer(cur);
-		// If this statement is true, the value is not
-		// in the list
-		if(cur == -1) return;
-	}
-	//Found value
-	pointer(prev) = pointer(cur);
-	// Now nothing is pointing at cur
-	*/
 };
 
 void verlet(double**  r, double**     v, double**       a, 
