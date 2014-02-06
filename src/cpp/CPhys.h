@@ -1,4 +1,5 @@
 #include "Matrix.h"
+#include "Cube.h"
 #include "physical.h"
 namespace CPhys{
 	namespace Lattice{

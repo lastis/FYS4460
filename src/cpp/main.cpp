@@ -17,9 +17,10 @@ void verlet     (double**       r, double**     v, double**       a,
 void printToFile(double**       r, double**     v, int        atoms, 
 		 int 	    frame, int      width, int    precision);
 
-double ***box;
-double * listElems;
-double boxSize;
+double***box;
+double*	pointer;
+double 	boxSize;
+int 	boxes;
 	
 int main(int argc, const char *argv[]) {
 	// NOTES:
@@ -37,10 +38,9 @@ int main(int argc, const char *argv[]) {
 	double	v0	= sqrt(e0/m);
 	double	stdDev 	= sqrt(K_B*T/m);
 	// Atoms
-	int 	Nc 	= 8;
+	int 	Nc 	= 3;
 	int	atoms 	= 4*Nc*Nc*Nc;
 	double	L = b*Nc;
-	boxSize = L/2;
 	// Vectors
 	Matrix 	r = Lattice::getFCC(Nc,b); // r = n x m : n = atoms : m = 3
 	Matrix 	v = Matrix(atoms,3);
@@ -52,19 +52,11 @@ int main(int argc, const char *argv[]) {
 	int	width 		= 16;
 	int 	precision 	= 8;
 	// Allocate memory for box array
-	int boxes = L/boxSize;
-	box 	= new double**[boxes];
-	double **ptr1 	= new double*[boxes];
-	double *ptr2 	= new double[boxes*boxes*boxes];
-	for (int i = 0; i < boxes; i++) {
-		box[i] = ptr1;
-		ptr1 += 1;
-		for (int j = 0; j < boxes ; j++) {
-			box[i][j] = ptr2;
-			ptr2 += boxes;
-		}
-	}
-	listElems = Vector(atoms).getArrayPointer();
+	boxes = 1;
+	boxSize = L/boxes;
+	Cube boxx = Cube(boxes,boxes,boxes);
+	box = boxx.getArrayPointer();
+	pointer = Vector(atoms).getArrayPointer();
 
 	// Initialize the velocities
 	double 	vel = 0;
@@ -118,17 +110,64 @@ void printToFile(double**     r, double**     v, int     atoms,
 	outFile.close();
 };
 
-void verlet(double**  r, double**     v, double**       a, 
-	     double   dt, int      atoms, double   L){
-	// Loop over all particles and update a vHalf speed.
-	double vHalf[3] = {0,0,0};
+void refreshBoxes(double** r, int atoms, double L){
+	// Reset the box, we want default value to be -1
+	// (Note: we do not need to reset the pointer vector
+	// because how the add method is created)
 	for (int i = 0; i < boxes; i++) {
 		for (int j = 0; j < boxes; j++) {
 			for (int k = 0; k < boxes; k++) {
-				
+				box[i][j][k] = -1;
 			}
 		}
 	}
+	// Add
+	int x = 0; int y = 0; int z = 0;
+	for (int i = 0; i < atoms; i++) {
+		// Division to find the box, then do cutoff to int
+		x = r[i][0]/boxSize;
+		y = r[i][1]/boxSize;
+		z = r[i][2]/boxSize;
+		int temp = box[x][y][z];
+		box[x][y][z] = i;
+		pointer[i] = temp;
+		/*
+		cout << "rx = " << r[i][0] << endl;
+		cout << "x = " << x << endl;
+		cout << "y = " << y << endl;
+		cout << "z = " << z << endl;
+		cout << "pointer["<< i << "] = " << pointer[i] << endl;
+		*/
+	}
+
+	/*
+	// Remove
+	// The next value, B, in the list from the value A 
+	// is get by "B = pointer(A)"
+	remValue = 20;
+	if(box(1,1,1) == remValue){
+		box(1,1,1) = pointer(box(1,1,1));
+	}
+	cur = box(1,1,1);
+	prev = -1;
+	while(cur != remValue){
+		prev = cur;
+		// Skip to next value
+		cur = pointer(cur);
+		// If this statement is true, the value is not
+		// in the list
+		if(cur == -1) return;
+	}
+	//Found value
+	pointer(prev) = pointer(cur);
+	// Now nothing is pointing at cur
+	*/
+};
+
+void verlet(double**  r, double**     v, double**       a, 
+	    double   dt, int      atoms, double   L){
+	double vHalf[3] = {0,0,0};
+	// Loop over all particles and update a vHalf speed.
 	for (int i = 0; i < atoms; i++) {
 		vHalf[0] = v[i][0] + 0.5*dt*a[i][0];
 		vHalf[1] = v[i][1] + 0.5*dt*a[i][1];
@@ -137,37 +176,6 @@ void verlet(double**  r, double**     v, double**       a,
 		r[i][0] += vHalf[0]*dt;
 		r[i][1] += vHalf[1]*dt;
 		r[i][2] += vHalf[2]*dt;
-
-
-
-		/*
-		// TODO
-		// Remove
-		// The next value, B, in the list from the value A 
-		// is get by "B = pointer(A)"
-		remValue = 20;
-		if(box(1,1,1) == remValue){
-			box(1,1,1) = pointer(box(1,1,1));
-		}
-		cur = box(1,1,1);
-		prev = -1;
-		while(cur != remValue){
-			prev = cur;
-			// Skip to next value
-			cur = pointer(cur);
-			// If this statement is true, the value is not
-			// in the list
-			if(cur == -1) return;
-		}
-		//Found value
-		pointer(prev) = pointer(cur);
-		// Now nothing is pointing at cur
-		*/
-
-		// Add
-		int temp = box[r[i][0]][r[i][1]][r[i][2]];
-		box[r[i][0]][r[i][1]][r[i][2]] = i;
-		pointer(i) = temp;
 
 		// Periodic boundry conditions
 		if(r[i][0] > L){
@@ -200,49 +208,115 @@ void verlet(double**  r, double**     v, double**       a,
 	}
 };
 
-void force(double** a, double** r, double atoms, double L){
+
+void force1(double** a, double** r, int i, int j, double L){
 	double rij[3] = {0,0,0};
 	double lHalf = L/2.0;
+	// Create the relative vector
+	rij[0] = r[j][0] - r[i][0];
+	rij[1] = r[j][1] - r[i][1];
+	rij[2] = r[j][2] - r[i][2];
+
+	// Check for closest path in periodic boundries
+	if(rij[0] > lHalf){
+		rij[0] -= L;
+	}
+	else if(rij[0] < -lHalf){
+		rij[0] += L;
+	}
+	if(rij[1] > lHalf){
+		rij[1] -= L;
+	}
+	else if(rij[1] < -lHalf){
+		rij[1] += L;
+	}
+	if(rij[2] > lHalf){
+		rij[2] -= L;
+	}
+	else if(rij[2] < -lHalf){
+		rij[2] += L;
+	}
+
+	double r2 = rij[0]*rij[0] 
+		  + rij[1]*rij[1] 
+		  + rij[2]*rij[2];
+	double r2i = 1/r2;
+	double r6i = r2i*r2i*r2i;
+	double r12i = r6i*r6i;
+	a[i][0] -= 24*(2*r12i-r6i) * r2i * rij[0];
+	a[i][1] -= 24*(2*r12i-r6i) * r2i * rij[1];
+	a[i][2] -= 24*(2*r12i-r6i) * r2i * rij[2];
+
+	a[j][0] += 24*(2*r12i-r6i) * r2i * rij[0];
+	a[j][1] += 24*(2*r12i-r6i) * r2i * rij[1];
+	a[j][2] += 24*(2*r12i-r6i) * r2i * rij[2];
+};
+
+void cyclic(int n){
+
+};
+
+void force(double** a, double** r, double atoms, double L){
+	/*
+	refreshBoxes(r,atoms,L);
+
+	int u = 0; int v = 0; int w = 0; 
+	int x = 0; int y = 0; int z = 0; 
+	for (int i = 0; i < boxes; i++) {
+	  for (int j = 0; j < boxes; j++) {
+	    for (int k = 0; k < boxes; k++) {
+	      // We choose box(i,j,k) and itterate through
+	      // the boxes around this box
+	      for (int x = i-1; x <= i+1; x++) {
+	      	for (int y = j-1; y <= j+1; y++) {
+	      	  for (int z = k-1; z <= k+1; z++) {
+		    
+	      	  }
+		}
+	      }
+	    }
+	  }
+	}
+
+
+
+
+
+	int j = 0;
+	int xCur = 0; int yCur = 0; int zCur = 0; 
 	for (int i = 0; i < atoms; i++) {
-		for (int j = i+1; j < atoms; j++) {
-			// Create the relative vector
-			rij[0] = r[j][0] - r[i][0];
-			rij[1] = r[j][1] - r[i][1];
-			rij[2] = r[j][2] - r[i][2];
+		// Find the box which contains particle i
+		xCur = r[i][0]/boxSize;
+		yCur = r[i][1]/boxSize;
+		zCur = r[i][2]/boxSize;
+		// Itterate through the boxes on all sides
+		for (int x = xCur-1; x <= xCur+1; x++) {
+			for (int y = yCur-1; y <= yCur+1; y++) {
+				for (int z = zCur-1; z <= zCur; z++) {
+					if(z == -1) z = 0;
+					// This is the first index of the atom
+					// in the box(x,y,z)
+					j = box[x][y][z];
+					while (j != -1) {
+						// Skip to next when the particle find
+						// itself in the box
+						if (j == i){
+							j = pointer[j];
+							continue;
+						}	
 
-			// Check for closest path in periodic boundries
-			if(rij[0] > lHalf){
-				rij[0] -= L;
-			}
-		    	else if(rij[0] < -lHalf){
-				rij[0] += L;
-			}
-			if(rij[1] > lHalf){
-				rij[1] -= L;
-			}
-		    	else if(rij[1] < -lHalf){
-				rij[1] += L;
-			}
-			if(rij[2] > lHalf){
-				rij[2] -= L;
-		    	}
-		    	else if(rij[2] < -lHalf){
-			    	rij[2] += L;
-			}
+						force1(a,r,i,j,L);
 
-			double r2 = rij[0]*rij[0] 
-				  + rij[1]*rij[1] 
-				  + rij[2]*rij[2];
-			double r2i = 1/r2;
-			double r6i = r2i*r2i*r2i;
-			double r12i = r6i*r6i;
-			a[i][0] -= 24*(2*r12i-r6i) * r2i * rij[0];
-			a[i][1] -= 24*(2*r12i-r6i) * r2i * rij[1];
-			a[i][2] -= 24*(2*r12i-r6i) * r2i * rij[2];
-
-			a[j][0] += 24*(2*r12i-r6i) * r2i * rij[0];
-			a[j][1] += 24*(2*r12i-r6i) * r2i * rij[1];
-			a[j][2] += 24*(2*r12i-r6i) * r2i * rij[2];
+						// Done, now change j to the next 
+						// particle in the box
+						j = pointer[j];
+					}
+					// z loop ends here
+				}
+				// y loop ends here
+			}
+			// x loop ends here
 		}
 	}
+	*/
 };
