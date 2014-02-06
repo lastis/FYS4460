@@ -9,23 +9,25 @@ using namespace CPhys;
 using namespace physical::constants;
 
 void force      (double**       a, double**     r, double     atoms, 
-	         double   boxSize);
+	         double   L);
 
 void verlet     (double**       r, double**     v, double**       a, 
-	         double        dt, int      atoms, double   boxSize);
+	         double        dt, int      atoms, double   L);
 
 void printToFile(double**       r, double**     v, int        atoms, 
 		 int 	    frame, int      width, int    precision);
 
-double*** box;
-
+double ***box;
+double * listElems;
+double boxSize;
+	
 int main(int argc, const char *argv[]) {
 	// NOTES:
 	// Nc cannot be less than 1
 	long	seed 	= 123;
 	// Runtime
 	double	dt	= 0.02;
-	double	finalT  = 100*dt;
+	double	finalT  = 10*dt;
 	// Simulation variables
 	double 	sigma 	= 3.405; 	//E-10
 	double 	b 	= 5.260/sigma; 	//E-10
@@ -37,7 +39,8 @@ int main(int argc, const char *argv[]) {
 	// Atoms
 	int 	Nc 	= 8;
 	int	atoms 	= 4*Nc*Nc*Nc;
-	double	boxSize = b*Nc;
+	double	L = b*Nc;
+	boxSize = L/2;
 	// Vectors
 	Matrix 	r = Lattice::getFCC(Nc,b); // r = n x m : n = atoms : m = 3
 	Matrix 	v = Matrix(atoms,3);
@@ -48,12 +51,20 @@ int main(int argc, const char *argv[]) {
 	// Output
 	int	width 		= 16;
 	int 	precision 	= 8;
-	// TODO
 	// Allocate memory for box array
-	box = new double**[Nc];
-	double **ptr1 = new double*[Nc];
-	double *ptr2 = new double[Nc*Nc*Nc];
-	
+	int boxes = L/boxSize;
+	box 	= new double**[boxes];
+	double **ptr1 	= new double*[boxes];
+	double *ptr2 	= new double[boxes*boxes*boxes];
+	for (int i = 0; i < boxes; i++) {
+		box[i] = ptr1;
+		ptr1 += 1;
+		for (int j = 0; j < boxes ; j++) {
+			box[i][j] = ptr2;
+			ptr2 += boxes;
+		}
+	}
+	listElems = Vector(atoms).getArrayPointer();
 
 	// Initialize the velocities
 	double 	vel = 0;
@@ -69,10 +80,10 @@ int main(int argc, const char *argv[]) {
 	// Do first printout of first state
 	printToFile(pR,pV,atoms,0,width,precision);
 	// Calculate the total force on all atoms once first
-	force(pA,pR,atoms,boxSize);
+	force(pA,pR,atoms,L);
 	// The verlet integration
 	for (double i = 1; i*dt < finalT; i++) {
-		verlet(pR,pV,pA,dt,atoms,boxSize);
+		verlet(pR,pV,pA,dt,atoms,L);
 		printToFile(pR,pV,atoms,i,width,precision);
 	}
 
@@ -108,81 +119,90 @@ void printToFile(double**     r, double**     v, int     atoms,
 };
 
 void verlet(double**  r, double**     v, double**       a, 
-	     double   dt, int      atoms, double   boxSize){
+	     double   dt, int      atoms, double   L){
 	// Loop over all particles and update a vHalf speed.
 	double vHalf[3] = {0,0,0};
-		for (int i = 0; i < atoms; i++) {
-			vHalf[0] = v[i][0] + 0.5*dt*a[i][0];
-			vHalf[1] = v[i][1] + 0.5*dt*a[i][1];
-			vHalf[2] = v[i][2] + 0.5*dt*a[i][2];
-
-			r[i][0] += vHalf[0]*dt;
-			r[i][1] += vHalf[1]*dt;
-			r[i][2] += vHalf[2]*dt;
-
-			// TODO
-			// Remove
-			// The next value, B, in the list from the value A 
-			// is get by "B = pointer(A)"
-			remValue = 20;
-			if(box(1,1,1) == remValue){
-				box(1,1,1) = pointer(box(1,1,1));
-			}
-			cur = box(1,1,1);
-			prev = -1;
-			while(cur != remValue){
-				prev = cur;
-				// Skip to next value
-				cur = pointer(cur);
-				// If this statement is true, the value is not
-				// in the list
-				if(cur == -1) return;
-			}
-			//Found value
-			pointer(prev) = pointer(cur);
-			// Now nothing is pointing at cur
-
-			// Add
-			temp = box(1,1,1);
-			box(1,1,1) = new;
-			pointer(new) = temp;
-
-
-
-			// Periodic boundry conditions
-			if(r[i][0] > boxSize){
-				     r[i][0] -= boxSize;
-			}
-			else if(r[i][0] < 0){
-				r[i][0] += boxSize;
-			}
-			if(r[i][1] > boxSize){
-				r[i][1] -= boxSize;
-			}
-			else if(r[i][1] < 0){
-				r[i][1] += boxSize;
-			}
-			if(r[i][2] > boxSize){
-				r[i][2] -= boxSize;
-			}
-			else if(r[i][2] < 0){
-				r[i][2] += boxSize;
+	for (int i = 0; i < boxes; i++) {
+		for (int j = 0; j < boxes; j++) {
+			for (int k = 0; k < boxes; k++) {
+				
 			}
 		}
+	}
+	for (int i = 0; i < atoms; i++) {
+		vHalf[0] = v[i][0] + 0.5*dt*a[i][0];
+		vHalf[1] = v[i][1] + 0.5*dt*a[i][1];
+		vHalf[2] = v[i][2] + 0.5*dt*a[i][2];
 
-		// Recalculate forces
-		force(a,r,atoms,boxSize);
-		// Calculate the new velocities
-		for (int i = 0; i < atoms; i++) {
-			v[i][0] = vHalf[0] + 0.5*dt*a[i][0];
-			v[i][1] = vHalf[1] + 0.5*dt*a[i][1];
-			v[i][2] = vHalf[2] + 0.5*dt*a[i][2];
+		r[i][0] += vHalf[0]*dt;
+		r[i][1] += vHalf[1]*dt;
+		r[i][2] += vHalf[2]*dt;
+
+
+
+		/*
+		// TODO
+		// Remove
+		// The next value, B, in the list from the value A 
+		// is get by "B = pointer(A)"
+		remValue = 20;
+		if(box(1,1,1) == remValue){
+			box(1,1,1) = pointer(box(1,1,1));
 		}
+		cur = box(1,1,1);
+		prev = -1;
+		while(cur != remValue){
+			prev = cur;
+			// Skip to next value
+			cur = pointer(cur);
+			// If this statement is true, the value is not
+			// in the list
+			if(cur == -1) return;
+		}
+		//Found value
+		pointer(prev) = pointer(cur);
+		// Now nothing is pointing at cur
+		*/
+
+		// Add
+		int temp = box[r[i][0]][r[i][1]][r[i][2]];
+		box[r[i][0]][r[i][1]][r[i][2]] = i;
+		pointer(i) = temp;
+
+		// Periodic boundry conditions
+		if(r[i][0] > L){
+			r[i][0] -= L;
+		}
+		else if(r[i][0] < 0){
+			r[i][0] += L;
+		}
+		if(r[i][1] > L){
+			r[i][1] -= L;
+		}
+		else if(r[i][1] < 0){
+			r[i][1] += L;
+		}
+		if(r[i][2] > L){
+			r[i][2] -= L;
+		}
+		else if(r[i][2] < 0){
+			r[i][2] += L;
+		}
+	}
+
+	// Recalculate forces
+	force(a,r,atoms,L);
+	// Calculate the new velocities
+	for (int i = 0; i < atoms; i++) {
+		v[i][0] = vHalf[0] + 0.5*dt*a[i][0];
+		v[i][1] = vHalf[1] + 0.5*dt*a[i][1];
+		v[i][2] = vHalf[2] + 0.5*dt*a[i][2];
+	}
 };
 
-void force(double** a, double** r, double atoms, double boxSize){
+void force(double** a, double** r, double atoms, double L){
 	double rij[3] = {0,0,0};
-	double lHalf = boxSize/2.0;
+	double lHalf = L/2.0;
 	for (int i = 0; i < atoms; i++) {
 		for (int j = i+1; j < atoms; j++) {
 			// Create the relative vector
@@ -192,22 +212,22 @@ void force(double** a, double** r, double atoms, double boxSize){
 
 			// Check for closest path in periodic boundries
 			if(rij[0] > lHalf){
-				rij[0] -= boxSize;
+				rij[0] -= L;
 			}
 		    	else if(rij[0] < -lHalf){
-				rij[0] += boxSize;
+				rij[0] += L;
 			}
 			if(rij[1] > lHalf){
-				rij[1] -= boxSize;
+				rij[1] -= L;
 			}
 		    	else if(rij[1] < -lHalf){
-				rij[1] += boxSize;
+				rij[1] += L;
 			}
 			if(rij[2] > lHalf){
-				rij[2] -= boxSize;
+				rij[2] -= L;
 		    	}
 		    	else if(rij[2] < -lHalf){
-			    	rij[2] += boxSize;
+			    	rij[2] += L;
 			}
 
 			double r2 = rij[0]*rij[0] 
