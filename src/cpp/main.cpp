@@ -17,7 +17,7 @@ void verlet     (double**       r, double**     v, double**       a,
 void printToFile(double**       r, double**     v, int        atoms, 
 		 int 	    frame, int      width, int    precision);
 
-double***box;
+Cube box;
 double*	pointer;
 double 	boxSize;
 int 	boxes;
@@ -38,7 +38,7 @@ int main(int argc, const char *argv[]) {
 	double	v0	= sqrt(e0/m);
 	double	stdDev 	= sqrt(K_B*T/m);
 	// Atoms
-	int 	Nc 	= 3;
+	int 	Nc 	= 16;
 	int	atoms 	= 4*Nc*Nc*Nc;
 	double	L = b*Nc;
 	// Vectors
@@ -52,10 +52,10 @@ int main(int argc, const char *argv[]) {
 	int	width 		= 16;
 	int 	precision 	= 8;
 	// Allocate memory for box array
-	boxes = 1;
+	boxes = 4;
 	boxSize = L/boxes;
-	Cube boxx = Cube(boxes,boxes,boxes);
-	box = boxx.getArrayPointer();
+	box = Cube(boxes,boxes,boxes);
+
 	pointer = Vector(atoms).getArrayPointer();
 
 	// Initialize the velocities
@@ -78,7 +78,6 @@ int main(int argc, const char *argv[]) {
 		verlet(pR,pV,pA,dt,atoms,L);
 		printToFile(pR,pV,atoms,i,width,precision);
 	}
-
 	return 0;
 }
 
@@ -114,13 +113,7 @@ void refreshBoxes(double** r, int atoms, double L){
 	// Reset the box, we want default value to be -1
 	// (Note: we do not need to reset the pointer vector
 	// because how the add method is created)
-	for (int i = 0; i < boxes; i++) {
-		for (int j = 0; j < boxes; j++) {
-			for (int k = 0; k < boxes; k++) {
-				box[i][j][k] = -1;
-			}
-		}
-	}
+	box = -1;
 	// Add
 	int x = 0; int y = 0; int z = 0;
 	for (int i = 0; i < atoms; i++) {
@@ -128,16 +121,8 @@ void refreshBoxes(double** r, int atoms, double L){
 		x = r[i][0]/boxSize;
 		y = r[i][1]/boxSize;
 		z = r[i][2]/boxSize;
-		int temp = box[x][y][z];
-		box[x][y][z] = i;
-		pointer[i] = temp;
-		/*
-		cout << "rx = " << r[i][0] << endl;
-		cout << "x = " << x << endl;
-		cout << "y = " << y << endl;
-		cout << "z = " << z << endl;
-		cout << "pointer["<< i << "] = " << pointer[i] << endl;
-		*/
+		pointer[i] = box(x,y,z);
+		box(x,y,z) = i;
 	}
 
 	/*
@@ -252,15 +237,9 @@ void force1(double** a, double** r, int i, int j, double L){
 	a[j][2] += 24*(2*r12i-r6i) * r2i * rij[2];
 };
 
-void cyclic(int n){
-
-};
-
 void force(double** a, double** r, double atoms, double L){
-	/*
 	refreshBoxes(r,atoms,L);
-
-	int u = 0; int v = 0; int w = 0; 
+	int atom1 = 0; int atom2 = 0;
 	int x = 0; int y = 0; int z = 0; 
 	for (int i = 0; i < boxes; i++) {
 	  for (int j = 0; j < boxes; j++) {
@@ -270,7 +249,27 @@ void force(double** a, double** r, double atoms, double L){
 	      for (int x = i-1; x <= i+1; x++) {
 	      	for (int y = j-1; y <= j+1; y++) {
 	      	  for (int z = k-1; z <= k+1; z++) {
-		    
+			// This is the first index of the atom
+			// in the box(x,y,z)
+			atom1 = box(i,j,k);
+			atom2 = box(x,y,z);
+			while (atom1 != -1) {
+				while (atom2 != -1) {
+					// Skip to next when the particle find
+					// itself in the box
+					if (atom1 == atom2){
+						atom2 = pointer[atom2];
+						continue;
+					}	
+					force1(a,r,atom1,atom2,L);
+					// Done, now change j to the next 
+					// particle in the box
+					atom2 = pointer[atom2];
+				}
+				// Done, now change j to the next 
+				// particle in the box
+				atom1 = pointer[atom1];
+			}
 	      	  }
 		}
 	      }
@@ -278,9 +277,7 @@ void force(double** a, double** r, double atoms, double L){
 	  }
 	}
 
-
-
-
+	/*
 
 	int j = 0;
 	int xCur = 0; int yCur = 0; int zCur = 0; 
