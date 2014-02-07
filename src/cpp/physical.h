@@ -758,71 +758,74 @@ namespace physical {
 	namespace units = unit;
 
 	namespace constant {
-		using namespace units;
+		// The next commented line extends the unit namespace
+		// into the code using constant. 
+		// using namespace units;
+
 		// speed of light
-		const double	 c	 = 2.99792458e8*meters/second;
+		const double	 c	 = 2.99792458e8*unit::meters/unit::second;
 		// speed of sound
-		const double	 Mach	 = 331.46*meters/second;
+		const double	 Mach	 = 331.46*unit::meters/unit::second;
 		// Planck constant
-		const double	 h	 = 6.6260755e-34*Joule*seconds;
-		const double	 h_bar	 = h/(2.0*pi);
+		const double	 h	 = 6.6260755e-34*unit::Joule*unit::seconds;
+		const double	 h_bar	 = h/(2.0*unit::pi);
 		// standard gavitational acceleration at sea level
 		const double	 g	 = units::gravity;
 		// electron charge
-		const double	 e	 = 1.60217733e-19*Coulombs;
+		const double	 e	 = 1.60217733e-19*unit::Coulombs;
 		// elevtron Volt
-		const double	 eV	 = e*V;
+		const double	 eV	 = e*unit::V;
 		const double	 keV	 = 1000.0*eV;
 		const double	 MeV	 = 1000000.0*eV;
 		const double	 GeV	 = 1000000000.0*eV;
 		const double	 Rydberg	 = 13.6054*eV;
 		const double	 Rydbergs	= Rydberg;
 		// electron mass
-		const double	 m_e	 = 9.1093897e-31*kilograms;
+		const double	 m_e	 = 9.1093897e-31*unit::kilograms;
 		// proton mass
-		const double	 m_P	 = 1.6726231e-27*kilograms;
+		const double	 m_P	 = 1.6726231e-27*unit::kilograms;
 		// deuteron mass
 		const double	 m_D	 = 1875.61339*MeV/(c*c);
 		// unified atomic mass unit
-		const double	atomic_mass_unit	= 1.6605402e-27*kilograms;
+		const double	atomic_mass_unit	= 1.6605402e-27*unit::kilograms;
 		const double	atomic_mass_units	= atomic_mass_unit;
 		const double	 amu	 = atomic_mass_unit;
 		const double	 Dalton	 = atomic_mass_unit;
 		const double	 Daltons	 = Dalton;
 		// permittivity of free space
-		const double	 epsilon	 = 8.854187817e-12*Farads/meter;
+		const double	 epsilon	 = 8.854187817e-12*unit::Farads/unit::meter;
 		// permeability of free space
-		const double	 mu	 = 12.566370614e-7*Newtons/(A*A);
+		const double	 mu	 = 12.566370614e-7*unit::Newtons/(unit::A*unit::A);
 		// fine-structure constant
 		const double	 alpha	 = 1.0/137.0359895;
 		// classical electron radius
-		const double	 r_e	 = 2.81794092e-15*meters;
+		const double	 r_e	 = 2.81794092e-15*unit::meters;
 		// electron Compton wavelength
-		const double	 lambda_bar	= 3.86159323e-13*meters;
+		const double	 lambda_bar	= 3.86159323e-13*unit::meters;
 		// Bohr radius
-		const double	 a_0	 = 0.529177249e-10*meters;
+		const double	 a_0	 = 0.529177249e-10*unit::meters;
 		// wavelength of 1 eV/c particle
-		const double	 lambda_1eV	= 1.23984244e-6*meters;
+		const double	 lambda_1eV	= 1.23984244e-6*unit::meters;
 		// Thomson cross section
-		const double	 sigma_0	 = 0.66524616*barns;
+		const double	 sigma_0	 = 0.66524616*unit::barns;
 		// Bohr magneton
-		const double	 mu_B	 = 5.78838263e-11*MeV/Tesla;
+		const double	 mu_B	 = 5.78838263e-11*MeV/unit::Tesla;
 		// nuclear magneton
-		const double	 mu_N	 = 3.15245166e-14*MeV/Tesla;
+		const double	 mu_N	 = 3.15245166e-14*MeV/unit::Tesla;
 		// electron cyclotron frequency/field
-		const double	 E_M_e	 = 1.75881962e11*C/kg*(rad/(s*T));
+		const double	 E_M_e	 = 1.75881962e11*unit::C/unit::kg*(unit::rad/(unit::s*unit::T));
 		// proton cyclotron frequency/field
-		const double	 E_M_P	 = 9.5788309e7*C/kg*(rad/(s*T));
+		const double	 E_M_P	 = 9.5788309e7*unit::C/unit::kg*(unit::rad/(unit::s*unit::T));
 		// gravitational constant
-		const double	 G	 = 6.67259e-11*m*m*m/(kg*s*s);
+		const double	 G	 = 6.67259e-11*unit::m*unit::m*unit::m/(unit::kg*unit::s*unit::s);
 		// Avogadro's constant
 		const double	 N_A	 = 6.0221367e23;
 		// Boltzmann constant
-		const double	 K_B	 = 1.380658e-23*Joules/Kelvin;
+		const double	 K_B	 = 1.380658e-23*unit::Joules/unit::Kelvin;
 		// molar volume, ideal gas at standard temperature and pressure
-		const double	 V_molar	 = 2.897756e-3*meter*Kelvins;
+		const double	 V_molar	 = 2.897756e-3*unit::meter*unit::Kelvins;
 		// Stefan-Boltzmann constant
-		const double	 sigma_SB	= 5.67051e-8*W/(m*m*K*K*K*K);
+		const double	 sigma_SB	= 5.67051e-8*unit::W/(unit::m*unit::m*unit::K*unit::K*unit::K*unit::K);
 	}
 	namespace constants = constant;
 }
