@@ -19,7 +19,6 @@ void initState(Matrix& r, Matrix& v, Matrix& a, long seed);
 void initBoxes(Cube& box, double*& list);
 void applyForce(double** a, double** r, int i, int j);
 void refreshBoxes(double** r, Cube& box, double*& list);
-
 ///////////////////////////////////////////
 // 		Read only variables
 ///////////////////////////////////////////
@@ -92,12 +91,26 @@ void initState(Matrix& r, Matrix& v, Matrix& a, long seed){
 		vel = stdDev/v0*Random::gauss(seed);
 		v(i,2) = vel;
 	}
+	// Remove linear moment
+	double **ppV = v.getArrayPointer();
+	double usum = 0; double vsum = 0; double wsum = 0;
+	for(int i = 0; i < atoms; i++){
+		usum += ppV[i][0];
+		vsum += ppV[i][1];
+		wsum += ppV[i][2];
+	}  
+	double du = usum/atoms; double dv = vsum/atoms; double dw = wsum/atoms;
+	for(int i = 0; i < atoms; i++){
+		ppV[i][0] -= du;
+		ppV[i][1] -= dv;
+		ppV[i][2] -= dw;
+	}
 }
 
 void initBoxes(Cube& box, double*& list){
 	box 	= Cube(boxes,boxes,boxes);
 	//list 	= Vector(atoms).getArrayPointer();
-	list = new double[atoms];
+	list 	= new double[atoms];
 }
 
 void printToFile(double**     r, double**     v,
@@ -190,9 +203,6 @@ void verlet(double**  r, double**     v, double**       a, Cube& box, double*& l
 
 
 void applyForce(double** a, double** r, int i, int j){
-	cout << "i = " << i << endl;
-	cout << "j = " << j << endl;
-	cout << endl;
 	double rij[3] = {0,0,0};
 	double lHalf = L/2.0;
 	// Create the relative vector
@@ -236,6 +246,42 @@ void force(double** a, double** r, Cube& box, double*& list){
 	refreshBoxes(r,box,list);
 	int atom1 = 0; int atom2 = 0;
 	int x = 0; int y = 0; int z = 0; 
+	int i = 0; int j = 0; int k = 0;
+
+	for (int atom1 = 0; atom1 < atoms; atom1++) {
+		// Find the box of "atom1"
+		i = r[atom1][0];
+		j = r[atom1][1];
+		k = r[atom1][2];
+
+		for (int x = i-1; x <= i+1; x++) {
+			for (int y = j-1; y <= j+1; y++) {
+				for (int z = k-1; z <= k+1; z++) {
+					// This is the first index of the atom2
+					// in the box(x,y,z)
+					atom2 = box(x,y,z);
+					while (atom2 != -1) {
+						// Skip to next when the particle find
+						// itself in the box
+						if (atom1 == atom2){
+							atom2 = list[atom2];
+							continue;
+						}	
+						applyForce(a,r,atom1,atom2);
+
+						// Done, now change j to the next 
+						// particle in the box
+						atom2 = list[atom2];
+					} // Second while loop ends here
+
+				} // z loop ends here
+			} // y loop ends here
+		} // x loop ends here
+	}
+	/*
+	refreshBoxes(r,box,list);
+	int atom1 = 0; int atom2 = 0;
+	int x = 0; int y = 0; int z = 0; 
 	for (int i = 0; i < boxes; i++) {
 	  for (int j = 0; j < boxes; j++) {
 	    for (int k = 0; k < boxes; k++) {
@@ -244,29 +290,30 @@ void force(double** a, double** r, Cube& box, double*& list){
 	      for (int x = i-1; x <= i+1; x++) {
 	      	for (int y = j-1; y <= j+1; y++) {
 	      	  for (int z = k-1; z <= k+1; z++) {
-		    // This is the first index of the atom
-		    // in the box(x,y,z)
-		    atom1 = box(i,j,k);
-		    atom2 = box(x,y,z);
-		    while (atom1 != -1) {
-		      while (atom2 != -1) {
-			// Skip to next when the particle find
-			// itself in the box
-			if (atom1 == atom2){
-			  atom2 = list[atom2];
-			  continue;
-		        }	
-		        applyForce(a,r,atom1,atom2);
+		  	// This is the first index of the atom
+		    	// in the box(x,y,z)
+		    	atom1 = box(i,j,k);
+		    	atom2 = box(x,y,z);
+		    	while (atom1 != -1) {
+		      		while (atom2 != -1) {
+					// Skip to next when the particle find
+					// itself in the box
+					if (atom1 == atom2){
+			  			atom2 = list[atom2];
+			  			continue;
+		        		}	
+		        		applyForce(a,r,atom1,atom2);
 
-		        // Done, now change j to the next 
-		        // particle in the box
-		        atom2 = list[atom2];
-		      } // Second while loop ends here
+		        		// Done, now change j to the next 
+		        		// particle in the box
+		        		atom2 = list[atom2];
+		      		} // Second while loop ends here
 
-		      // Done, now change j to the next 
-		      // particle in the box
-		      atom1 = list[atom1];
-		    } // First while loop ends here
+		      		// Done, now change j to the next 
+		      		// particle in the box
+		      		atom1 = list[atom1];
+
+		    	} // First while loop ends here
 
 	      	  } // z loop ends here
 		} // y loop ends here
@@ -274,4 +321,5 @@ void force(double** a, double** r, Cube& box, double*& list){
 	    } // k loop ends here
 	  } // j loop ends here
 	} // i loop ends here
+	*/
 }
