@@ -9,11 +9,10 @@ const double 	v0	= sqrt(e0/mass);
 const double 	stdDev 	= sqrt(K_B*T/mass);
 // Simulation variables
 const double 	dt	= 0.02;
-const double 	finalT  = 10*dt;
+const double 	finalT  = 100*dt;
 const int 	Nc 	= 8;
 const int 	atoms 	= 4*Nc*Nc*Nc;
 const double 	L 	= b*Nc;
-const double 	boxSize = 3*sigma;
+//const double 	boxSize = 3*sigma;
+const double 	boxSize = L/2;
 const int 	boxes 	= L/boxSize + 1;
-//const double 	boxSize = L/2;
-//const int 	boxes 	= L/boxSize + 1;

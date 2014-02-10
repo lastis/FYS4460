@@ -1,7 +1,7 @@
 from scitools.std import *
 import matplotlib.pyplot as plt
 
-filename = "/../../res/result/000.xyz"
+filename = "../../res/result/0050.xyz"
 inFile = open(filename, 'r');
 lines = inFile.readlines();
 inFile.close();

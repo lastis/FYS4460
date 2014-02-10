@@ -41,6 +41,7 @@ extern const double 	boxSize;
 extern const int 	boxes;
 
 int main(int argc, const char *argv[]) {
+	cout << "Box = " <<boxes<<"x"<<boxes<<"x"<<boxes<<endl;
 	long	seed 	= 123;
 	// Vectors
 	Matrix 	r; double** ppR;
@@ -61,6 +62,10 @@ int main(int argc, const char *argv[]) {
 	ppV = v.getArrayPointer();
 	ppA = a.getArrayPointer();
 
+	// Start time
+	clock_t start, finish;
+	start = clock();
+
 	///////////////////////////////////////////
 	// 		Simulation
 	///////////////////////////////////////////
@@ -69,10 +74,15 @@ int main(int argc, const char *argv[]) {
 	// Calculate the total force on all atoms once first
 	force(ppA,ppR,box,list);
 	// Verlet integration
-	for (double i = 1; i*dt < finalT; i++) {
+	for (int i = 1; i*dt <= finalT; i++) {
+		if(i%10 == 0) cout << "Timestep = " << i << endl;
 		verlet(ppR,ppV,ppA,box,list);
 		printToFile(ppR,ppV,i,width,precision);
 	}
+	// Calculate time
+	finish = clock();
+	double time = double(finish - start)/CLOCKS_PER_SEC;
+	cout << "Time = " << time << endl;
 	return 0;
 }
 
@@ -109,7 +119,6 @@ void initState(Matrix& r, Matrix& v, Matrix& a, long seed){
 
 void initBoxes(Cube& box, double*& list){
 	box 	= Cube(boxes,boxes,boxes);
-	//list 	= Vector(atoms).getArrayPointer();
 	list 	= new double[atoms];
 }
 
@@ -154,6 +163,11 @@ void refreshBoxes(double** r, Cube& box, double*& list){
 		y = r[i][1]/boxSize;
 		z = r[i][2]/boxSize;
 		list[i] = box(x,y,z);
+		/*
+		cout << "x = " << x << endl;
+		cout << "y = " << y << endl;
+		cout << "z = " << z << endl;
+		*/
 		box(x,y,z) = i;
 	}
 }
@@ -243,22 +257,46 @@ void applyForce(double** a, double** r, int i, int j){
 }
 
 void force(double** a, double** r, Cube& box, double*& list){
+	//cout << "force" << endl;
 	refreshBoxes(r,box,list);
 	int atom1 = 0; int atom2 = 0;
 	int x = 0; int y = 0; int z = 0; 
 	int i = 0; int j = 0; int k = 0;
 
+
 	for (int atom1 = 0; atom1 < atoms; atom1++) {
 		// Find the box of "atom1"
-		i = r[atom1][0];
-		j = r[atom1][1];
-		k = r[atom1][2];
+		i = r[atom1][0]/boxSize;
+		j = r[atom1][1]/boxSize;
+		k = r[atom1][2]/boxSize;
+		/*
+		cout << "New Atom : " << atom1 << endl;
+		cout << "box(i,j,k) = (" << i << ","
+			<< j << "," << k << ")" << endl;
+
+		// Check
+		int* check = new int[atoms];
+		for (int o = 0; o < atoms; o++) {
+			check[o] = 0;
+		}
+		*/
 
 		for (int x = i-1; x <= i+1; x++) {
+			if(x < 0) 		continue;
+			if(x > boxes-1) 	continue;
 			for (int y = j-1; y <= j+1; y++) {
+				if(y < 0) 		continue;
+				if(y > boxes-1) 	continue;
 				for (int z = k-1; z <= k+1; z++) {
+					if(z < 0) 		continue;
+					if(z > boxes-1) 	continue;
 					// This is the first index of the atom2
 					// in the box(x,y,z)
+					/*
+					cout << "box(x,y,z) = (" << x << ","
+						<< y << "," << z << ")" << endl;
+					*/
+
 					atom2 = box(x,y,z);
 					while (atom2 != -1) {
 						// Skip to next when the particle find
@@ -269,6 +307,9 @@ void force(double** a, double** r, Cube& box, double*& list){
 						}	
 						applyForce(a,r,atom1,atom2);
 
+						//check[atom2] += 1;
+						//cout << atom2 << endl;
+
 						// Done, now change j to the next 
 						// particle in the box
 						atom2 = list[atom2];
@@ -277,49 +318,19 @@ void force(double** a, double** r, Cube& box, double*& list){
 				} // z loop ends here
 			} // y loop ends here
 		} // x loop ends here
+		
+
+
+		/*
+		for (int l = 0; l < atoms; l++) {
+			if (check[l] != 1) {
+				if(atom1 == l && check[l] == 0) continue;
+				cout << "Atom comperator fault " << endl 
+				     << "Atom: " << l << " Value: " 
+				     << check[l] << endl;
+			}
+		}
+		*/
 	}
-	/*
-	refreshBoxes(r,box,list);
-	int atom1 = 0; int atom2 = 0;
-	int x = 0; int y = 0; int z = 0; 
-	for (int i = 0; i < boxes; i++) {
-	  for (int j = 0; j < boxes; j++) {
-	    for (int k = 0; k < boxes; k++) {
-	      // We choose box(i,j,k) and itterate through
-	      // the boxes around this box
-	      for (int x = i-1; x <= i+1; x++) {
-	      	for (int y = j-1; y <= j+1; y++) {
-	      	  for (int z = k-1; z <= k+1; z++) {
-		  	// This is the first index of the atom
-		    	// in the box(x,y,z)
-		    	atom1 = box(i,j,k);
-		    	atom2 = box(x,y,z);
-		    	while (atom1 != -1) {
-		      		while (atom2 != -1) {
-					// Skip to next when the particle find
-					// itself in the box
-					if (atom1 == atom2){
-			  			atom2 = list[atom2];
-			  			continue;
-		        		}	
-		        		applyForce(a,r,atom1,atom2);
 
-		        		// Done, now change j to the next 
-		        		// particle in the box
-		        		atom2 = list[atom2];
-		      		} // Second while loop ends here
-
-		      		// Done, now change j to the next 
-		      		// particle in the box
-		      		atom1 = list[atom1];
-
-		    	} // First while loop ends here
-
-	      	  } // z loop ends here
-		} // y loop ends here
-	      } // x loop ends here
-	    } // k loop ends here
-	  } // j loop ends here
-	} // i loop ends here
-	*/
 }

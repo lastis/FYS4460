@@ -1,6 +1,7 @@
 #include <iostream>
 #include <cstdio>
 #include <cmath>
+#include <math.h>
 #include "Cube.h"
 
 using namespace std;
@@ -64,9 +65,20 @@ void	Cube::swap(Cube& c1, Cube& c2){
 
 double&	Cube::operator()(int i, int j, int k){
 	// Make the array circular by taking the modulus
-	i -= (i/mN - (i<0))*mN;
-	j -= (j/mM - (j<0))*mM;
-	k -= (k/mO - (k<0))*mO;
+	/*
+	cout << "Boxes = " << mN << endl;
+	cout << "i = " << i << endl;
+	cout << "j = " << j << endl;
+	cout << "k = " << k << endl;
+	*/
+	i -= floor(double(i)/mN)*mN;
+	j -= floor(double(j)/mM)*mM;
+	k -= floor(double(k)/mO)*mO;
+	/*
+	cout << "i = " << i << endl;
+	cout << "j = " << j << endl;
+	cout << "k = " << k << endl;
+	*/
 	return mMat[i][j][k];
 }
 
