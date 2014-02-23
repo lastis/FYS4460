@@ -8,14 +8,28 @@
 using namespace std;
 using namespace CPhys;
 
-Matrix	Lattice::getFCC(int Nc, double dist){
+double** CPhys::matrix(int N, int M){
+	double** mat = new double*[N]; 
+	for(int i = 0; i < N; i++){
+		mat[i] = new double[M]; 
+	}
+
+	for (int i = 0; i < N; i++) {
+		for (int j = 0; j < M; j++) {
+			mat[i][j] = 0;
+		}
+	}
+
+	return mat;
+}
+
+Matrix	Lattice::getFCC(int Nc, double b){
 	// NOTES:
 	// Nc cannot be less than 1
 	// Counting is done by adding all atoms from all unit cells
 	// then adding the sides except the edges, then add the 
 	// edges (they overlap on the last atom)
 	int 	atoms 	= 4*Nc*Nc*Nc;
-	double 	b = dist;
 	Matrix 	r = Matrix(atoms,3);
 	// Initiate r vector
 	int index = 0;

@@ -1,7 +1,10 @@
 #include "Matrix.h"
 #include "Cube.h"
-#include "physical.h"
+#include "Physical.h"
 namespace CPhys{
+
+	double**	matrix(int n, int m);
+
 	namespace Lattice{
 		Matrix	getFCC(int Nc, double dist);
 	}

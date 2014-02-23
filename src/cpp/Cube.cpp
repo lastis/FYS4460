@@ -13,6 +13,7 @@ Cube::Cube(){
 	allocateMemory(mN,mM,mO);
 }
 
+
 Cube::Cube(int N, int M, int O){
 	allocateMemory(N,M,O);
 	mN = N;
