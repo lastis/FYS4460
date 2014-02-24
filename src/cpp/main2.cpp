@@ -106,7 +106,7 @@ int main(int nargs, char** argsv){
 	refreshBoxes(box,pointer,state);
 
 	createPores(state);
-    
+
 	/*-- Calculate force once before starting the simulation. 
 	 * This is done in order to avoid having to calculate the force 
 	 * twice for each timestep */
@@ -159,7 +159,7 @@ void createPores(double**& state){
 	double 	r 	= 0;
 	frozenAtoms	= new bool[natoms];
 	for (int q = 0; q < natoms; q++) {
-		frozenAtoms[q] = false;
+		frozenAtoms[q] = true;
 	}
 
 	for (int i = 0; i < natoms; i++) {
@@ -172,11 +172,16 @@ void createPores(double**& state){
 			rij[2] = state[i][2] - center[2];
 			r = sqrt(rij[0]*rij[0]+rij[1]*rij[1]+rij[2]*rij[2]);
 			if (r < poreRadius) {
-				frozenAtoms[i] = true;
-				state[i][3] = 0;
-				state[i][4] = 0;
-				state[i][5] = 0;
+				frozenAtoms[i] = false;
 			}
+		}
+	}
+
+	for (int j = 0; j < natoms; j++) {
+		if (frozenAtoms[j] == true) {
+			state[j][3] = 0;
+			state[j][4] = 0;
+			state[j][5] = 0;
 		}
 	}
 
@@ -383,6 +388,9 @@ void verletIntegration(double**& state, double**& a, Cube &box,
     
     
 	for(int i = 0; i < natoms; i++){
+		// Skip atom if frozen
+		if (frozenAtoms[i] == true) continue;
+
 		state[i][3] += dt*0.5*a[i][0]; //vhalf
 		state[i][4] += dt*0.5*a[i][1];
 		state[i][5] += dt*0.5*a[i][2];
@@ -417,6 +425,8 @@ void verletIntegration(double**& state, double**& a, Cube &box,
 
 
 	for(int i = 0; i < natoms; i++){ 
+		// Skip atom if frozen
+		if (frozenAtoms[i] == true) continue;
 		// Then set new velocities
 		state[i][3] += dt*0.5*a[i][0];
 		state[i][4] += dt*0.5*a[i][1];
@@ -568,6 +578,8 @@ void berendsenThermostat(double**& state, double T, double Tbath, double tau){
     double gamma = sqrt(1 + dt/tau*(Tbath/T - 1));
     //cout << "Gamma: " << gamma << endl;
     for(int i = 0; i < natoms; i++){
+	// Skip if frozen
+	if (frozenAtoms[i] == true) continue;
         state[i][3] *= gamma;
         state[i][4] *= gamma;
         state[i][5] *= gamma;

@@ -19,9 +19,9 @@ const int	Nc	= 8;
 /////////////////////////////////////////////////
 
 const double 	dt	= 0.02;
-const double 	finalT  = 100*dt;
+const double 	finalT  = 200*dt;
 const int 	dumpRate 	= 10;
 const double	targetT = 0.851;
-const double	tau	= 10*dt;
-const double	poreRadius = 1*nm/(sigma*1e-10);
-const int	poreCnt = 20;
+const double	tau	= 20*dt;
+const double	poreRadius = 2*nm/(sigma*1e-10);
+const int	poreCnt = 5;
