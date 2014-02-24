@@ -32,7 +32,7 @@ void berendsenThermostat(double**& state, double T, double Tbath, double tau);
 
 void refreshBoxes(Cube &box, int*& pointer, double**& state);
 
-void createPores(double** state, int*& frozenAtoms);
+void createPores(double**& state);
 
 /////////////////////////////////////////////////
 // 		Simulation Variables
@@ -61,6 +61,7 @@ int 	natoms;
 double 	L;
 double  boxSize;
 int 	boxes;
+bool*	frozenAtoms;
 
 
 
@@ -70,8 +71,7 @@ int main(int nargs, char** argsv){
 	char 	tmpstr[64]; 
 	Matrix	mState;
 	double**	state;
-	int*	frozenAtoms;
-	double** a;
+	double** 	a;
 	// Some state calculation variables
 	double curT 	= 0;
 	double sum 	= 0;
@@ -105,7 +105,7 @@ int main(int nargs, char** argsv){
 	int* pointer = new int[natoms];
 	refreshBoxes(box,pointer,state);
 
-	createPores(state,frozenAtoms);
+	createPores(state);
     
 	/*-- Calculate force once before starting the simulation. 
 	 * This is done in order to avoid having to calculate the force 
@@ -152,17 +152,16 @@ int main(int nargs, char** argsv){
 	return 0;
 }
 
-void createPores(double** state, int*& frozenAtoms){
-	long seed = 123;
-	double rij[3]    = {0,0,0};
-	double center[3] = {0,0,0};
-	double r 	 = 0;
-	frozenAtoms 	 = new int[natoms];
+void createPores(double**& state){
+	long 	seed = 123;
+	double 	rij[3]  = {0,0,0};
+	double 	center[3] = {0,0,0};
+	double 	r 	= 0;
+	frozenAtoms	= new bool[natoms];
 	for (int q = 0; q < natoms; q++) {
-		frozenAtoms[q] = -1;
+		frozenAtoms[q] = false;
 	}
 
-	int cnt = 0;
 	for (int i = 0; i < natoms; i++) {
 		for (int pore = 0; pore < poreCnt; pore++) {
 			center[0] = L*Random::ran0(seed);
@@ -173,12 +172,28 @@ void createPores(double** state, int*& frozenAtoms){
 			rij[2] = state[i][2] - center[2];
 			r = sqrt(rij[0]*rij[0]+rij[1]*rij[1]+rij[2]*rij[2]);
 			if (r < poreRadius) {
-				//frozenAtoms[cnt] = i;
-				//cnt++;
+				frozenAtoms[i] = true;
+				state[i][3] = 0;
+				state[i][4] = 0;
+				state[i][5] = 0;
 			}
 		}
 	}
-	cout << "Pore radius = " << poreRadius << endl;
+
+	/*
+	frozenAtomCnt = 0;
+	for (int j = 0; j < natoms; j++) {
+		if (temp[j] == 1) frozenAtomCnt++;
+	}
+	frozenAtoms 	= new int[frozenAtomCnt];
+	int cnt = 0;
+	for (int k = 0; k < natoms; k++) {
+		if (temp[k] == 1){
+			frozenAtoms[cnt] = k;
+		}
+	}
+	*/
+	cout << "Pore radius = " << poreRadius << " sigma." << endl;
 }
 
 void refreshBoxes(Cube &box, int*& pointer, double**& state){
@@ -326,6 +341,11 @@ void force(double**& a, double**& state, Cube &box,
             for(int k = 0; k < boxes; k++){
                 
                 atom1 = box(i,j,k);
+
+		// Skip frozen atoms
+		if(frozenAtoms[atom1] == true){
+			atom1 = pointer[atom1];
+		}
                 
                 while(atom1 != -1){
                     // Loop through all neighbouring boxes
@@ -338,13 +358,13 @@ void force(double**& a, double**& state, Cube &box,
                                     if(atom2 != atom1){
                                         applyForce(a,state,atom1,atom2,sum);
                                     }
-                                    atom2 = pointer[atom2];
+                               	    atom2 = pointer[atom2];
                                 }
                                 
                             }
                         }
                     }
-                    atom1 = pointer[atom1];
+	            atom1 = pointer[atom1];
                 }
             }
         }
