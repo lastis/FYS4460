@@ -4,8 +4,23 @@
 #include <cmath>
 #include <time.h>
 #include "CPhys.h"
+#include "Parameters2.h"
 using namespace std;
 using namespace CPhys;
+
+
+/////////////////////////////////////////////////
+// 		Init State Variables
+/////////////////////////////////////////////////
+
+extern const double 	sigma;
+extern const double 	b;
+extern const double 	mass;
+extern const double 	T;
+extern const double 	e0;
+extern const double 	v0;
+extern const double 	stdDev;
+extern const int	Nc;
 
 
 void Init_velocities(double ***state, int natoms, double stddev){
@@ -95,27 +110,18 @@ void Write_state(double ***state, int natoms, int framenum){
 
 int main(int nargs, char** argsv){
     /* Check if user provided number of cells */
-    int Nc = atof(argsv[1]);
     int natoms = Nc*Nc*Nc*4;
     cout << "Specified " << Nc << " number of cells in each dimension" << endl;
     cout << "This gives "<< natoms << " atoms." << endl;
-    double sigma = 3.405; //E-10
-    double b = 4;//10000*5.260/sigma; // Aangstrom
-    double amu = 1.6605402e-27; 
-    double mass = 39.948*amu;
-    cout << "Density: " << mass*natoms / ((b*Nc*sigma*1E-10)*(b*Nc*sigma*1E-10)*(b*Nc*sigma*1E-10)) << " kg/m^3" << endl;
+    cout << "Density: " << mass*natoms / 
+	    ((b*Nc*sigma*1E-10)
+	     *(b*Nc*sigma*1E-10)
+	     *(b*Nc*sigma*1E-10)) 
+	    << " kg/m^3" << endl;
     cout << "b: " << b << endl;
-    double kb = 1.38E-23;
-    double m = 39.948 * 1.66E-27;
-    double T = 10.0;
-    double eps0 = 119.8 * kb;
-    double v0 = sqrt(eps0 / m); // 6.33E-3
-    double stddev = sqrt(kb*T/m);
-    double boxsize = Nc*b;
-    
     double **pos = new double*[natoms];
     Init_lattice(&pos, Nc, b);
-    Init_velocities(&pos, natoms, stddev/v0);
+    Init_velocities(&pos, natoms, stdDev/v0);
     Write_state(&pos, natoms, 0);
     
 }

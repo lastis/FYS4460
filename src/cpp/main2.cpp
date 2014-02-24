@@ -4,12 +4,12 @@
 #include <cmath>
 #include <time.h>
 #include "CPhys.h"
-#include "Parameters.h"
+#include "Parameters2.h"
 using namespace std;
 using namespace CPhys;
 
 void verletIntegration(double**&   state, double**&   a, Cube& box, 
-		        int*&     pointer, double&   sum);
+		        int*&    pointer, double&   sum);
 
 void writeState(double**& state, int frameNum);
 
@@ -18,11 +18,11 @@ void loadState(Matrix& state, int frameNum);
 void applyForce(double**& a, double**& state, int i, int j, double& sum);
 
 void force(double**&       a, double**& state, Cube& box, 
-	    int*&     pointer, double&     sum);
+	    int*&    pointer, double&     sum);
 
 void computeEnergy(double**& state);
 
-double computeTemperature(double**& state);
+double computeTemperature(double**& state, bool write);
 
 void computeRadialDistr(double**& state, double Lhalf);
 
@@ -32,20 +32,32 @@ void berendsenThermostat(double**& state, double T, double Tbath, double tau);
 
 void refreshBoxes(Cube &box, int*& pointer, double**& state);
 
-// State variables
-extern const double 	sigma;
-extern const double 	b;
-extern const double	mass;
-extern const double 	T;
-extern const double	e0;
-extern const double	v0;
-extern const double	stdDev;
-// Simulation variables
+void createPores(double** state, int*& frozenAtoms);
+
+/////////////////////////////////////////////////
+// 		Simulation Variables
+/////////////////////////////////////////////////
+
 extern const double 	dt;
 extern const double 	finalT;
-extern const int	dumpRate;
+extern const int 	dumpRate;
+extern const double	targetT;
+extern const double	tau;
 
-int 	Nc;
+/////////////////////////////////////////////////
+// 		Init State Variables
+/////////////////////////////////////////////////
+
+extern const double 	sigma;
+extern const double 	b;
+extern const double 	mass;
+extern const double 	T;
+extern const double 	e0;
+extern const double 	v0;
+extern const double 	stdDev;
+extern const int	Nc;
+
+int 	myNc;
 int 	natoms;
 double 	L;
 double  boxSize;
@@ -59,12 +71,16 @@ int main(int nargs, char** argsv){
 	char 	tmpstr[64]; 
 	Matrix	mState;
 	double**	state;
+	int*	frozenAtoms;
+	double** a;
 	// Some state calculation variables
 	double curT 	= 0;
 	double sum 	= 0;
-    
+
+	//-- Initialize array for calculating forces;
 	loadState(mState,frameNum); 
 	state 	= mState.getArrayPointer();
+	a 	= matrix(natoms,3);
 
 	// Print out
 	sprintf(tmpstr,"Starting point: %04d.xyz",frameNum);
@@ -74,7 +90,7 @@ int main(int nargs, char** argsv){
 		<< ", boxes: " << boxes << endl;
 	cout << "Density: " 
 	     << mass*natoms / 
-	     ((b*Nc*sigma*1E-10)*(b*Nc*sigma*1E-10)*(b*Nc*sigma*1E-10)) 
+	     ((b*myNc*sigma*1E-10)*(b*myNc*sigma*1E-10)*(b*myNc*sigma*1E-10)) 
 	     << " kg/m^3" << endl;
 	cout << "Actual system length: " << (b*sigma*1E-10) << " m" << endl;
 	cout << "Actual system volume: " 
@@ -83,14 +99,14 @@ int main(int nargs, char** argsv){
    
     
     
-	//-- Initialize array for calculating forces;
-	double **a = matrix(natoms,3);
     
 	//-- Divide the domain into boxes of size rc
 	Cube box = Cube(boxes,boxes,boxes); 
 	box = -1; // Sets all entries to -1
 	int* pointer = new int[natoms];
 	refreshBoxes(box,pointer,state);
+
+	createPores(state,frozenAtoms);
     
 	/*-- Calculate force once before starting the simulation. 
 	 * This is done in order to avoid having to calculate the force 
@@ -99,17 +115,17 @@ int main(int nargs, char** argsv){
 
     
 	/* Perform time integration untill time T */
-	int counter = 0;
-
 	cout << "\nStarting time integration. " << endl;
 	cout << "-------------------------------------\n\n";
 	clock_t start = clock(); clock_t end;
-
+	int counter = 0;
 	for(double t = dt; t<finalT; t+=dt){
 		counter++;
 		sum = 0;
 		verletIntegration(state,a,box,pointer,sum);
 
+		curT = computeTemperature(state,false); 
+		berendsenThermostat(state,curT,targetT,tau);
 		if(counter % dumpRate == 0){
 			cout << "Dumping .xyz at step " 
 				<< int(t/dt)+1 << " of " << finalT/dt << endl;
@@ -118,11 +134,11 @@ int main(int nargs, char** argsv){
 
 			// State calculations
 
-			cout << "Boxsize: " << boxSize << endl;
 			cout << "T: " << T << ", dt = " << dt 
 				<< " , steps: " << finalT/dt << endl;
+			cout << "Temperature: " << curT
+				<< " Kelvin." << endl;
 			computeEnergy(state);
-			curT = computeTemperature(state); 
 			Compute_pressure(sum,curT);
 
 			end = clock();
@@ -134,6 +150,35 @@ int main(int nargs, char** argsv){
 		}
 	}
 	return 0;
+}
+
+void createPores(double** state, int*& frozenAtoms){
+	long seed = 123;
+	double rij[3]    = {0,0,0};
+	double center[3] = {0,0,0};
+	double r 	 = 0;
+	frozenAtoms 	 = new int[natoms];
+	for (int q = 0; q < natoms; q++) {
+		frozenAtoms[q] = -1;
+	}
+
+	int cnt = 0;
+	for (int i = 0; i < natoms; i++) {
+		for (int pore = 0; pore < poreCnt; pore++) {
+			center[0] = L*Random::ran0(seed);
+			center[1] = L*Random::ran0(seed);
+			center[2] = L*Random::ran0(seed);
+			rij[0] = state[i][0] - center[0];
+			rij[1] = state[i][1] - center[1];
+			rij[2] = state[i][2] - center[2];
+			r = sqrt(rij[0]*rij[0]+rij[1]*rij[1]+rij[2]*rij[2]);
+			if (r < poreRadius) {
+				//frozenAtoms[cnt] = i;
+				//cnt++;
+			}
+		}
+	}
+	cout << "Pore radius = " << poreRadius << endl;
 }
 
 void refreshBoxes(Cube &box, int*& pointer, double**& state){
@@ -210,19 +255,11 @@ void loadState(Matrix& state, int frameNum){
 		fscanf(inFile, "%lf", &ppState[i][4]);
 		fscanf(inFile, "%lf", &ppState[i][5]);
 	}
-
-	cout << ppState[0][0] << "  " 
-	     << ppState[0][1] << "  "  
-	     << ppState[0][2] << "  "  
-	     << ppState[0][3] << "  "  
-	     << ppState[0][4] << "  "  
-	     << ppState[0][5] << endl;
-	cout << ".\n.\n.\n";
 	cout <<  "Done loading state\n-----\n";
 
 	// Init simulation variables
-	Nc 	= cbrt(natoms/4.); 
-	L 	= b*Nc;
+	myNc 	= cbrt(natoms/4.); 
+	L 	= b*myNc;
 	boxSize = 3; // 3 sigma in real units
 	boxes 	= ceil(L/boxSize);
 }
@@ -410,7 +447,7 @@ void computeEnergy(double**& state){
 	fclose(outFile);
 }
 
-double computeTemperature(double**& state){
+double computeTemperature(double**& state, bool write){
     
 	double Ek = 0;
 	for(int i = 0; i < natoms; i++){
@@ -419,8 +456,7 @@ double computeTemperature(double**& state){
 				+ state[i][5]*state[i][5]);
 	}
 	double newT = 2 * Ek / (3 * natoms * K_B);
-	cout << "Temperature: " << newT*e0 << " Kelvin." << endl;
-
+	if (write) cout << "Temperature: " << newT*e0 << " Kelvin." << endl;
 	char fileName[64];
 	sprintf(fileName, "../../res/Measurements/Temperature.dat");
 	FILE *outFile;
@@ -491,7 +527,7 @@ void Compute_pressure(double sum, double curT){
 	sum = sum/2;
 	double V = L*L*L;
 	sum = sum/(3*V);
-	sum = sum*mass*mass/(3*b*Nc*Nc*Nc*sigma*e0);
+	sum = sum*mass*mass/(3*b*myNc*myNc*myNc*sigma*e0);
 
 	double rhoKT = 4/(b*b*b)*K_B*curT;
 	rhoKT = rhoKT/(sigma*sigma*sigma)*1e30;
