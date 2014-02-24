@@ -43,7 +43,7 @@ extern const double	targetT;
 extern const double	tau;
 
 /////////////////////////////////////////////////
-// 		Init State Variables
+// 		State Variables
 /////////////////////////////////////////////////
 
 extern const double 	sigma;

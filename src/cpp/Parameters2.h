@@ -2,7 +2,7 @@ using namespace physical::constants;
 using namespace physical::unit;
 
 /////////////////////////////////////////////////
-// 		Init State Variables
+// 		State Variables
 /////////////////////////////////////////////////
 
 const double 	sigma 	= 3.405; 	//E-10
@@ -19,7 +19,7 @@ const int	Nc	= 8;
 /////////////////////////////////////////////////
 
 const double 	dt	= 0.02;
-const double 	finalT  = 100*dt;
+const double 	finalT  = 20*dt;
 const int 	dumpRate 	= 10;
 const double	targetT = 0.851;
 const double	tau	= 10*dt;

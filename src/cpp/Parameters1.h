@@ -11,7 +11,7 @@ const double	targetT = 0.851;
 const double	tau	= 10*dt;
 
 /////////////////////////////////////////////////
-// 		Init State Variables
+// 		State Variables
 /////////////////////////////////////////////////
 
 const double 	sigma 	= 3.405; 	//E-10

@@ -45,7 +45,7 @@ extern const double	targetT;
 extern const double	tau;
 
 /////////////////////////////////////////////////
-// 		Init State Variables
+// 		State Variables
 /////////////////////////////////////////////////
 
 extern const double 	sigma;
@@ -57,7 +57,6 @@ extern const double 	v0;
 extern const double 	stdDev;
 extern const int	Nc;
 
-int 	myNc;
 int 	natoms;
 double 	L;
 double  boxSize;
@@ -90,7 +89,7 @@ int main(int nargs, char** argsv){
 		<< ", boxes: " << boxes << endl;
 	cout << "Density: " 
 	     << mass*natoms / 
-	     ((b*myNc*sigma*1E-10)*(b*myNc*sigma*1E-10)*(b*myNc*sigma*1E-10)) 
+	     ((b*Nc*sigma*1E-10)*(b*Nc*sigma*1E-10)*(b*Nc*sigma*1E-10)) 
 	     << " kg/m^3" << endl;
 	cout << "Actual system length: " << (b*sigma*1E-10) << " m" << endl;
 	cout << "Actual system volume: " 
@@ -118,17 +117,17 @@ int main(int nargs, char** argsv){
 	cout << "\nStarting time integration. " << endl;
 	cout << "-------------------------------------\n\n";
 	clock_t start = clock(); clock_t end;
-	int counter = 0;
-	for(double t = dt; t<finalT; t+=dt){
-		counter++;
+	int counter = 1;
+	for(double t = dt; t <= finalT; t = counter*dt){
 		sum = 0;
 		verletIntegration(state,a,box,pointer,sum);
 
 		curT = computeTemperature(state,false); 
 		berendsenThermostat(state,curT,targetT,tau);
+
 		if(counter % dumpRate == 0){
 			cout << "Dumping .xyz at step " 
-				<< int(t/dt)+1 << " of " << finalT/dt << endl;
+				<< counter << " of " << finalT/dt << endl;
 			frameNum++;
 			writeState(state,frameNum);
 
@@ -148,6 +147,7 @@ int main(int nargs, char** argsv){
 				<< endl << endl;
 			start = end;
 		}
+		counter++;
 	}
 	return 0;
 }
@@ -258,8 +258,7 @@ void loadState(Matrix& state, int frameNum){
 	cout <<  "Done loading state\n-----\n";
 
 	// Init simulation variables
-	myNc 	= cbrt(natoms/4.); 
-	L 	= b*myNc;
+	L 	= b*Nc;
 	boxSize = 3; // 3 sigma in real units
 	boxes 	= ceil(L/boxSize);
 }
@@ -527,7 +526,7 @@ void Compute_pressure(double sum, double curT){
 	sum = sum/2;
 	double V = L*L*L;
 	sum = sum/(3*V);
-	sum = sum*mass*mass/(3*b*myNc*myNc*myNc*sigma*e0);
+	sum = sum*mass*mass/(3*b*Nc*Nc*Nc*sigma*e0);
 
 	double rhoKT = 4/(b*b*b)*K_B*curT;
 	rhoKT = rhoKT/(sigma*sigma*sigma)*1e30;
