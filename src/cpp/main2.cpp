@@ -20,7 +20,7 @@ void computeForce();
 
 void computeEnergy();
 
-double computeTemperature(bool write);
+void computeTemperature(bool write);
 
 void computeRadialDistr(double lHalf);
 
@@ -63,7 +63,6 @@ double** mpA;
 double  boxSize;
 double 	L;
 double	curT;
-double	sumPressure;
 int 	natoms;
 int 	boxes;
 int*	vpLinkedList;
@@ -75,7 +74,7 @@ double r2;
 double r2i;
 double r6i;
 double r12i;
-
+double sumPressure;
 
 
 int main(int nargs, char** argsv){
@@ -450,14 +449,15 @@ void computeEnergy(){
 	fclose(outFile);
 }
 
-double computeTemperature(bool write){
-	double Ek = 0;
+void computeTemperature(bool write){
+	double sumTemp = 0;
 	for(int i = 0; i < natoms; i++){
-		Ek += 0.5*(mpState[i][3]*mpState[i][3] 
+		sumTemp += 0.5*(mpState[i][3]*mpState[i][3] 
 				+ mpState[i][4]*mpState[i][4] 
 				+ mpState[i][5]*mpState[i][5]);
 	}
-	double newT = 2 * Ek / (3 * natoms * K_B);
+
+	double newT = 2 * sumTemp / (3 * natoms * K_B);
 	if (write){
 		cout << "Temperature: " << newT*e0 << " Kelvin." << endl;
 		char fileName[64];
@@ -466,9 +466,7 @@ double computeTemperature(bool write){
 		outFile = fopen(fileName, "a");
 		fprintf(outFile, "%e\n", newT*e0);
 		fclose(outFile);
-	}	
 	curT = newT*e0;
-	return curT;
 }
 
 void computeRadialDistr(double lHalf){
