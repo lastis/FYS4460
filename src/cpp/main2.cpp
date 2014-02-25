@@ -79,15 +79,23 @@ double r6i;
 double r12i;
 double sumPressure;
 
+char outputPath[256];
 
 int main(int nargs, char** argsv){
 	/* Read starting point and initialize corresponding variables */
 	int 	frameNum = atoi(argsv[1]);
 	char 	tmpstr[64]; 
+    
+    // Set outputpath
+    //sprintf(outputPath, "../../res/");
+    sprintf(outputPath, "/home/andreas/work/Project2/");
+    
 	//-- Initialize array for calculating forces;
 	loadState(frameNum); 
 
-	// Print out
+    
+    
+    // Print out
 	sprintf(tmpstr,"Starting point: %04d.xyz",frameNum);
 	cout << tmpstr << endl; 
 
@@ -205,8 +213,8 @@ void refreshBoxes(){
 void writeState(int frameNum){
 	/* This function writes the current state of the 
 	 * system to a .xyz file in ASCII format. */
-	char fileName[64];
-	sprintf(fileName, "../../res/States/%04d.xyz", frameNum);
+	char fileName[256];
+	sprintf(fileName, "%sStates/%04d.xyz", outputPath ,frameNum);
 	//cout << fileName << endl;
 	FILE *outFile;
 
@@ -229,8 +237,8 @@ void writeState(int frameNum){
 
 void loadState(int frameNum){
 	char fileName[64];
-	sprintf(fileName, "../../res/States/%04d.xyz", frameNum);
-
+	sprintf(fileName, "%sStates/%04d.xyz", outputPath, frameNum);
+    //cout << fileName << endl;
 	FILE* inFile;
 	long lSize;
 	inFile = fopen(fileName, "r");
@@ -451,7 +459,7 @@ void computeEnergy(){
 	cout << "Total energy: " << E << endl;
 
 	char fileName[64];
-	sprintf(fileName, "../../res/Measurements/Energy.dat");
+	sprintf(fileName, "%s/Measurements/Energy.dat", outputPath);
 	FILE *outFile;
 	outFile = fopen(fileName, "a");
 	fprintf(outFile, "%e\n", E);
@@ -472,7 +480,7 @@ void computeTemperature(bool write){
 	if (write){
 		cout << "Temperature: " << newT*e0 << " Kelvin." << endl;
 		char fileName[64];
-		sprintf(fileName, "../../res/Measurements/Temperature.dat");
+		sprintf(fileName, "%s/Measurements/Temperature.dat", outputPath);
 		FILE *outFile;
 		outFile = fopen(fileName, "a");
 		fprintf(outFile, "%e\n", newT*e0);
@@ -526,7 +534,7 @@ void computeRadialDistr(double lHalf){
     }
     
     char fileName[128];
-    sprintf(fileName, "../../res/Measurements/RadialDistr.dat");
+    sprintf(fileName, "%s/Measurements/RadialDistr.dat", outputPath);
     FILE *outFile;
     outFile = fopen(fileName, "a");
     for(int i = 0; i < 100; i++){
@@ -551,7 +559,7 @@ void computePressure(){
 	cout << "Pressure : " << pressure/1000 << " kPa." << endl;
 
 	char fileName[128];
-	sprintf(fileName, "../../res/Measurements/Pressure.dat");
+	sprintf(fileName, "%s/Measurements/Pressure.dat", outputPath);
 	FILE *outFile;
 	outFile = fopen(fileName, "a");
 	fprintf(outFile, "%e ", pressure);
