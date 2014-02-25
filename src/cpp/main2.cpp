@@ -42,6 +42,9 @@ extern const int 	dumpRate;
 extern const double	targetT;
 extern const double	tau;
 
+extern const bool	usePores;
+extern const double	poreRadius;
+extern const int	poreCnt;
 /////////////////////////////////////////////////
 // 		State Variables
 /////////////////////////////////////////////////
@@ -81,8 +84,6 @@ int main(int nargs, char** argsv){
 	/* Read starting point and initialize corresponding variables */
 	int 	frameNum = atoi(argsv[1]);
 	char 	tmpstr[64]; 
-	curT 		= 0;
-	sumPressure 	= 0;
 	//-- Initialize array for calculating forces;
 	loadState(frameNum); 
 
@@ -122,6 +123,7 @@ int main(int nargs, char** argsv){
 			// State calculations
 			frameNum++;
 			computeEnergy();
+			computeTemperature(true); 
 			computePressure();
 			end = clock();
 
@@ -131,8 +133,6 @@ int main(int nargs, char** argsv){
 				<< counter << " of " << finalT/dt << endl;
 			cout << "T: " << T << ", dt = " << dt 
 				<< " , steps: " << finalT/dt << endl;
-			cout << "Temperature: " << curT
-				<< " Kelvin." << endl;
 			cout << "Time since last dump: " 
 				<< double(end - start)/CLOCKS_PER_SEC << endl;
 			cout << "-------------------------------------" 
@@ -150,6 +150,15 @@ void createPores(){
 	double 	center[3] = {0,0,0};
 	double 	r 	= 0;
 	vpFrozenAtoms	= new bool[natoms];
+
+	if (usePores == false) {
+		for (int q = 0; q < natoms; q++) {
+			vpFrozenAtoms[q] = false;
+		}
+		return;
+	}
+
+
 	for (int q = 0; q < natoms; q++) {
 		vpFrozenAtoms[q] = true;
 	}
@@ -450,6 +459,8 @@ void computeEnergy(){
 }
 
 void computeTemperature(bool write){
+	// It is important the temperature is calculated before
+	// pressure and the thermostat
 	double sumTemp = 0;
 	for(int i = 0; i < natoms; i++){
 		sumTemp += 0.5*(mpState[i][3]*mpState[i][3] 
@@ -466,6 +477,7 @@ void computeTemperature(bool write){
 		outFile = fopen(fileName, "a");
 		fprintf(outFile, "%e\n", newT*e0);
 		fclose(outFile);
+	}
 	curT = newT*e0;
 }
 
@@ -548,7 +560,7 @@ void computePressure(){
 }
 
 void applyBerendsenThermostat(){
-    double gamma = sqrt(1 + dt/tau*(targetT/T - 1));
+    double gamma = sqrt(1 + dt/tau*(targetT/curT - 1));
     //cout << "Gamma: " << gamma << endl;
     for(int i = 0; i < natoms; i++){
 	// Skip if frozen
