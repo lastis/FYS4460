@@ -579,3 +579,22 @@ void applyBerendsenThermostat(){
     }
 }
 
+void applyAndersenThermostat(){
+    long seed = 123;
+    double ran = 0;
+    for(int i = 0; i < natoms; i++){
+        if(vpFrozenAtoms[i] = true) continue;
+        // Generate random number
+        // if random number less than dt/tau -> reassign velocity
+        ran = Random::ran2(seed);
+        if(ran < dt/tau){
+            ran = Random::gauss(seed);
+            mpState[i][3] = ran*stdDev;
+            ran = Random::gauss(seed);
+            mpState[i][4] = ran*stdDev;
+            ran = Random::gauss(seed);
+            mpState[i][5] = ran*stdDev;
+        }
+    }   
+}
+
