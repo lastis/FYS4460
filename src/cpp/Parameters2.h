@@ -24,6 +24,6 @@ const int 	dumpRate 	= 1;
 const double	targetT = 0.851;
 const double	tau	= 20*dt;
 
-const bool	usePores = false;
+const bool	usePores = true;
 const double	poreRadius = 2*nm/(sigma*1e-10);
-const int	poreCnt = 5;
+const int	poreCnt = 20;

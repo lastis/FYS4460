@@ -88,7 +88,7 @@ int main(int nargs, char** argsv){
     
     // Set outputpath
     //sprintf(outputPath, "../../res/");
-    sprintf(outputPath, "/home/andreas/work/Project2/");
+    sprintf(outputPath, "/home/andrenos/work/FYS4460/");
     
 	//-- Initialize array for calculating forces;
 	loadState(frameNum); 
@@ -153,6 +153,39 @@ int main(int nargs, char** argsv){
 	return 0;
 }
 
+void writeFrozenState(int frameNum){
+	/* This function writes the current state of the 
+	 * system to a .xyz file in ASCII format. */
+	char fileName[256];
+    
+	sprintf(fileName, "%sStates/Frozen.xyz", outputPath);
+	//cout << fileName << endl;
+	FILE *outFile;
+    int fatoms = 0;
+    for(int i = 0; i < natoms; i++){
+        if(vpFrozenAtoms[i]) fatoms++;
+    }
+    
+	outFile = fopen(fileName, "w");
+	fprintf(outFile, "%i\n", fatoms);
+	fprintf(outFile, "Argon atom system state\n");
+	for(int i = 0; i < natoms; i++){
+        if(vpFrozenAtoms[i]){
+            //cout << "Found frozen atom" << endl;
+            fprintf(outFile, 
+				"Ar %e %e %e %e %e %e\n", 
+				mpState[i][0], 
+				mpState[i][1], 
+				mpState[i][2], 
+				mpState[i][3], 
+				mpState[i][4], 
+				mpState[i][5]);
+        }
+	}
+    
+	fclose(outFile);
+}
+
 void createPores(){
 	long 	seed = 123;
 	double 	center[3] = {0,0,0};
@@ -168,22 +201,44 @@ void createPores(){
 
 
 	for (int q = 0; q < natoms; q++) {
-		vpFrozenAtoms[q] = true;
+		vpFrozenAtoms[q] = false;
 	}
 
-	for (int i = 0; i < natoms; i++) {
-		for (int pore = 0; pore < poreCnt; pore++) {
-			center[0] = L*Random::ran0(seed);
-			center[1] = L*Random::ran0(seed);
-			center[2] = L*Random::ran0(seed);
-			rij[0] = mpState[i][0] - center[0];
-			rij[1] = mpState[i][1] - center[1];
-			rij[2] = mpState[i][2] - center[2];
-			r = sqrt(rij[0]*rij[0]+rij[1]*rij[1]+rij[2]*rij[2]);
-			if (r < poreRadius) {
-				vpFrozenAtoms[i] = false;
-			}
-		}
+    for (int pore = 0; pore < poreCnt; pore++) {
+        center[0] = L*Random::ran0(seed);
+        center[1] = L*Random::ran0(seed);
+        center[2] = L*Random::ran0(seed);
+        //cout << "Chose pore center at " << center[0] << "  " << center[1] << "  " << center[2] << endl;
+        for (int i = 0; i < natoms; i++) {
+            rij[0] = mpState[i][0] - center[0];
+            rij[1] = mpState[i][1] - center[1];
+            rij[2] = mpState[i][2] - center[2];
+            double lHalf = L/2.0;
+            if(rij[0] > lHalf){
+                rij[0] -= L;
+            }
+            else if(rij[0] < -lHalf){
+                rij[0] += L;
+            }
+            if(rij[1] > lHalf){
+                rij[1] -= L;
+            }
+            else if(rij[1] < -lHalf){
+                rij[1] += L;
+            }
+            if(rij[2] > lHalf){
+                rij[2] -= L;
+            }
+            else if(rij[2] < -lHalf){
+                rij[2] += L;
+            }
+            
+            
+            r = sqrt(rij[0]*rij[0]+rij[1]*rij[1]+rij[2]*rij[2]);
+            if (r < poreRadius) {
+                vpFrozenAtoms[i] = true;
+            }
+        }
 	}
 
 	for (int j = 0; j < natoms; j++) {
@@ -193,6 +248,7 @@ void createPores(){
 			mpState[j][5] = 0;
 		}
 	}
+    writeFrozenState(0);
 	cout << "Pore radius = " << poreRadius << " sigma." << endl;
 }
 
@@ -222,7 +278,19 @@ void writeState(int frameNum){
 	fprintf(outFile, "%i\n", natoms);
 	fprintf(outFile, "Argon atom system state\n");
 	for(int i = 0; i < natoms; i++){
-		fprintf(outFile, 
+        if(vpFrozenAtoms[i]){
+            //cout << "Found frozen atom" << endl;
+            fprintf(outFile, 
+				"Af %e %e %e %e %e %e\n", 
+				mpState[i][0], 
+				mpState[i][1], 
+				mpState[i][2], 
+				mpState[i][3], 
+				mpState[i][4], 
+				mpState[i][5]);
+        }
+        else{
+            fprintf(outFile, 
 				"Ar %e %e %e %e %e %e\n", 
 				mpState[i][0], 
 				mpState[i][1], 
@@ -230,13 +298,15 @@ void writeState(int frameNum){
 				mpState[i][3], 
 				mpState[i][4], 
 				mpState[i][5]);
+        }
 	}
+    
 	fclose(outFile);
 }
 
 
 void loadState(int frameNum){
-	char fileName[64];
+	char fileName[256];
 	sprintf(fileName, "%sStates/%04d.xyz", outputPath, frameNum);
     //cout << fileName << endl;
 	FILE* inFile;
@@ -271,7 +341,7 @@ void loadState(int frameNum){
 		fscanf(inFile, "%lf", &mpState[i][5]);
 	}
 	cout <<  "Done loading state\n-----\n";
-
+    fclose(inFile);
 	// Init simulation variables
 	L 	= b*Nc;
 	boxSize = 3; // 3 sigma in real units
@@ -422,6 +492,7 @@ void doVerletIntegration(){
 		mpState[i][3] += dt*0.5*mpA[i][0];
 		mpState[i][4] += dt*0.5*mpA[i][1];
 		mpState[i][5] += dt*0.5*mpA[i][2];
+        
 	}
 	/* Done with one step of the integration */
 }
