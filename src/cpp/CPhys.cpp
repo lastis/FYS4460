@@ -23,6 +23,27 @@ double** CPhys::matrix(int N, int M){
 	return mat;
 }
 
+void	PeriodicBounds::correctPos(double& x, double& L){
+	if(x > L){
+		x -= L*(int(x/L));
+	}
+	else if(x < 0){
+		x -= L*(int(x/L)-1);
+	}
+}
+
+double	PeriodicBounds::getClosestDist(double& x1, double& x2, double& L){
+	double rij = x2 - x1;
+	double lHalf = L/2;
+	if(rij > lHalf){
+		rij -= L;
+	}
+	else if(rij < -lHalf){
+		rij += L;
+	}
+	return rij;
+}
+
 Matrix	Lattice::getFCC(int Nc, double b){
 	// NOTES:
 	// Nc cannot be less than 1

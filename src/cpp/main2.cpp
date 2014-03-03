@@ -38,6 +38,8 @@ void writeFrozenState();
 
 void initLocalParam();
 
+void createCylindricPores();
+
 /////////////////////////////////////////////////
 // 		Simulation Variables
 /////////////////////////////////////////////////
@@ -51,6 +53,10 @@ extern const double	tau;
 extern const bool	usePores;
 extern const double	poreRadius;
 extern const int	poreCnt;
+
+extern const bool	useCylinders;
+extern const double	poreCylRadius;
+extern const int	poreCylCnt;
 /////////////////////////////////////////////////
 // 		State Variables
 /////////////////////////////////////////////////
@@ -98,7 +104,9 @@ int main(int nargs, char** argsv){
     
 	loadState(frameNum); 
 	initLocalParam();
-	createPores();
+	if (usePores) createPores();
+	if (useCylinders) createCylindricPores();
+	writeFrozenState();
 	printSystemStats(frameNum);
 
 	/*-- Calculate force once before starting the simulation. 
@@ -139,6 +147,42 @@ int main(int nargs, char** argsv){
 	return 0;
 }
 
+void createCylindricPores(){
+	long 	seed = 123;
+	double 	centerXY[2] = {0,0};
+	double 	r = 0;
+
+	for (int q = 0; q < natoms; q++) {
+		vpFrozenAtoms[q] = false;
+	}
+
+	using namespace PeriodicBounds;
+	for (int pore = 0; pore < poreCylCnt; pore++) {
+		centerXY[0] = L*Random::ran0(seed);
+		centerXY[1] = L*Random::ran0(seed);
+		for (int i = 0; i < natoms; i++) {
+			// Functions from PeriodicBounds
+			rij[0] = getClosestDist(mpState[i][0],centerXY[0], L);
+			rij[1] = getClosestDist(mpState[i][1],centerXY[1], L);
+
+			r = sqrt(rij[0]*rij[0]+rij[1]*rij[1]);
+			if (r < poreCylRadius) {
+				vpFrozenAtoms[i] = true;
+			}
+		}
+	}
+
+	for (int j = 0; j < natoms; j++) {
+		if (vpFrozenAtoms[j] == true) {
+			mpState[j][3] = 0;
+			mpState[j][4] = 0;
+			mpState[j][5] = 0;
+		}
+	}
+	cout << "Pore radius = " << poreRadius << " sigma." << endl;
+
+}
+
 void initLocalParam(){
 	// Init simulation variables
 	L 	= b*Nc;
@@ -149,6 +193,15 @@ void initLocalParam(){
 	cBox = Cube(boxes,boxes,boxes); 
 	vpLinkedList = new int[natoms];
 	refreshBoxes();
+	// Variables for pores
+	vpFrozenAtoms	= new bool[natoms];
+	if (usePores == false && useCylinders == false) {
+		for (int q = 0; q < natoms; q++) {
+			// Unfreeze all atoms
+			vpFrozenAtoms[q] = false;
+		}
+	}
+
 }
 
 
@@ -205,48 +258,21 @@ void createPores(){
 	long 	seed = 123;
 	double 	center[3] = {0,0,0};
 	double 	r 	= 0;
-	vpFrozenAtoms	= new bool[natoms];
-
-	if (usePores == false) {
-		for (int q = 0; q < natoms; q++) {
-			vpFrozenAtoms[q] = false;
-		}
-		return; // Finish the function
-	}
-
 
 	for (int q = 0; q < natoms; q++) {
 		vpFrozenAtoms[q] = false;
 	}
 
+	using namespace PeriodicBounds;
 	for (int pore = 0; pore < poreCnt; pore++) {
 		center[0] = L*Random::ran0(seed);
 		center[1] = L*Random::ran0(seed);
 		center[2] = L*Random::ran0(seed);
 		for (int i = 0; i < natoms; i++) {
-			rij[0] = mpState[i][0] - center[0];
-			rij[1] = mpState[i][1] - center[1];
-			rij[2] = mpState[i][2] - center[2];
-			double lHalf = L/2.0;
-			if(rij[0] > lHalf){
-				rij[0] -= L;
-			}
-			else if(rij[0] < -lHalf){
-				rij[0] += L;
-			}
-			if(rij[1] > lHalf){
-				rij[1] -= L;
-			}
-			else if(rij[1] < -lHalf){
-				rij[1] += L;
-			}
-			if(rij[2] > lHalf){
-				rij[2] -= L;
-			}
-			else if(rij[2] < -lHalf){
-				rij[2] += L;
-			}
-
+			// Functions from PeriodicBounds
+			rij[0] = getClosestDist(mpState[i][0],center[0], L);
+			rij[1] = getClosestDist(mpState[i][1],center[1], L);
+			rij[2] = getClosestDist(mpState[i][2],center[2], L);
 
 			r = sqrt(rij[0]*rij[0]+rij[1]*rij[1]+rij[2]*rij[2]);
 			if (r < poreRadius) {
@@ -465,24 +491,9 @@ void doVerletIntegration(){
 		mpState[i][2] += mpState[i][5]*dt;
 
 		/* Insert periodic boundaries */
-		if( mpState[i][0] > L){
-			mpState[i][0] -= L*(int(mpState[i][0]/L));
-		}
-		else if(mpState[i][0] < 0){
-			mpState[i][0] -= L*(int(mpState[i][0]/L)-1);
-		}
-		if( mpState[i][1] > L){
-			mpState[i][1] -= L*(int(mpState[i][1]/L));
-		}
-		else if(mpState[i][1] < 0){
-			mpState[i][1] -= L*(int(mpState[i][1]/L)-1);
-		}
-		if( mpState[i][2] > L){
-			mpState[i][2] -= L*(int(mpState[i][2]/L));
-		}
-		else if( mpState[i][2] < 0){
-			mpState[i][2] -= L*(int(mpState[i][2]/L)-1);
-		}
+		PeriodicBounds::correctPos(mpState[i][0],L);
+		PeriodicBounds::correctPos(mpState[i][1],L);
+		PeriodicBounds::correctPos(mpState[i][2],L);
 	}
 
 	/* At this point, recalculate forces */

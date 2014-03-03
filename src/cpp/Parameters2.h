@@ -26,7 +26,9 @@ const double	targetT = 0.851*T0;
 const double	tau	= 20*dt;
 
 const bool	usePores = false;
-const double	poreRadius = 2*nm/(sigma*1e-10);
-const int	poreCnt = 20;
+const double	poreRadius = 1*nm/(sigma*1e-10);
+const int	poreCnt = 1;
 
-const bool	useCylinders = false;
+const bool	useCylinders = true;
+const double	poreCylRadius = 1*nm/(sigma*1e-10);
+const int	poreCylCnt = 2;
