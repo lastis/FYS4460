@@ -32,6 +32,12 @@ void refreshBoxes();
 
 void createPores();
 
+void printSystemStats(int frameNum);
+
+void writeFrozenState();
+
+void initLocalParam();
+
 /////////////////////////////////////////////////
 // 		Simulation Variables
 /////////////////////////////////////////////////
@@ -71,53 +77,34 @@ int 	boxes;
 int*	vpLinkedList;
 bool*	vpFrozenAtoms;
 
-double aij[3];
-double rij[3];
-double r2;
-double r2i;
-double r6i;
-double r12i;
-double sumPressure;
+double 	aij[3];
+double 	rij[3];
+double 	r2;
+double 	r2i;
+double 	r6i;
+double 	r12i;
+double 	sumPressure;
+char 	tmpstr[64]; 
 
 char outputPath[256];
 
 int main(int nargs, char** argsv){
 	/* Read starting point and initialize corresponding variables */
 	int 	frameNum = atoi(argsv[1]);
-	char 	tmpstr[64]; 
     
-    // Set outputpath
-    //sprintf(outputPath, "../../res/");
-    sprintf(outputPath, "/home/andrenos/work/FYS4460/");
+    	// Set outputpath
+    	sprintf(outputPath, "../../res/");
+    	//sprintf(outputPath, "/home/andrenos/work/FYS4460/");
     
-	//-- Initialize array for calculating forces;
 	loadState(frameNum); 
-
-    
-    
-    // Print out
-	sprintf(tmpstr,"Starting point: %04d.xyz",frameNum);
-	cout << tmpstr << endl; 
-
-	cout << "\nL: " << L << ", boxSize: " << boxSize 
-		<< ", boxes: " << boxes << endl;
-	cout << "Density: " 
-	     << mass*natoms / 
-	     ((b*Nc*sigma*1E-10)*(b*Nc*sigma*1E-10)*(b*Nc*sigma*1E-10)) 
-	     << " kg/m^3" << endl;
-	cout << "Actual system length: " << (b*sigma*1E-10) << " m" << endl;
-	cout << "Actual system volume: " 
-	     << (b*sigma*1E-10)*(b*sigma*1E-10)*(b*sigma*1E-10) << " m^3"
-	     << endl << endl;
-    
-
+	initLocalParam();
 	createPores();
+	printSystemStats(frameNum);
+
 	/*-- Calculate force once before starting the simulation. 
 	 * This is done in order to avoid having to calculate the force 
 	 * twice for each timestep */
 	computeForce();
-    
-	/* Perform time integration untill time T */
 	cout << "\nStarting time integration. " << endl;
 	cout << "-------------------------------------\n\n";
 	clock_t start = clock(); clock_t end;
@@ -134,7 +121,6 @@ int main(int nargs, char** argsv){
 			computeTemperature(true); 
 			computePressure();
 			end = clock();
-
 			// Write out
 			writeState(frameNum);
 			cout << "Dumping .xyz at step " 
@@ -153,7 +139,36 @@ int main(int nargs, char** argsv){
 	return 0;
 }
 
-void writeFrozenState(int frameNum){
+void initLocalParam(){
+	// Init simulation variables
+	L 	= b*Nc;
+	boxSize = 3; // 3 sigma in real units
+	boxes 	= ceil(L/boxSize);
+	mpA 	= matrix(natoms,3);
+	//-- Divide the domain into boxes of size rc
+	cBox = Cube(boxes,boxes,boxes); 
+	vpLinkedList = new int[natoms];
+	refreshBoxes();
+}
+
+
+void printSystemStats(int frameNum){
+	sprintf(tmpstr,"Starting point: %04d.xyz",frameNum);
+	cout << tmpstr << endl; 
+
+	cout << "\nL: " << L << ", boxSize: " << boxSize 
+		<< ", boxes: " << boxes << endl;
+	cout << "Density: " 
+	     << mass*natoms / 
+	     ((b*Nc*sigma*1E-10)*(b*Nc*sigma*1E-10)*(b*Nc*sigma*1E-10)) 
+	     << " kg/m^3" << endl;
+	cout << "Actual system length: " << (b*sigma*1E-10) << " m" << endl;
+	cout << "Actual system volume: " 
+	     << (b*sigma*1E-10)*(b*sigma*1E-10)*(b*sigma*1E-10) << " m^3"
+	     << endl << endl;
+}
+
+void writeFrozenState(){
 	/* This function writes the current state of the 
 	 * system to a .xyz file in ASCII format. */
 	char fileName[256];
@@ -161,26 +176,26 @@ void writeFrozenState(int frameNum){
 	sprintf(fileName, "%sStates/Frozen.xyz", outputPath);
 	//cout << fileName << endl;
 	FILE *outFile;
-    int fatoms = 0;
-    for(int i = 0; i < natoms; i++){
-        if(vpFrozenAtoms[i]) fatoms++;
-    }
+    	int fatoms = 0;
+	for(int i = 0; i < natoms; i++){
+		if(vpFrozenAtoms[i]) fatoms++;
+	}
     
 	outFile = fopen(fileName, "w");
 	fprintf(outFile, "%i\n", fatoms);
 	fprintf(outFile, "Argon atom system state\n");
 	for(int i = 0; i < natoms; i++){
-        if(vpFrozenAtoms[i]){
-            //cout << "Found frozen atom" << endl;
-            fprintf(outFile, 
-				"Ar %e %e %e %e %e %e\n", 
-				mpState[i][0], 
-				mpState[i][1], 
-				mpState[i][2], 
-				mpState[i][3], 
-				mpState[i][4], 
-				mpState[i][5]);
-        }
+		if(vpFrozenAtoms[i]){
+		    //cout << "Found frozen atom" << endl;
+		    fprintf(outFile, 
+					"Ar %e %e %e %e %e %e\n", 
+					mpState[i][0], 
+					mpState[i][1], 
+					mpState[i][2], 
+					mpState[i][3], 
+					mpState[i][4], 
+					mpState[i][5]);
+		}
 	}
     
 	fclose(outFile);
@@ -196,7 +211,7 @@ void createPores(){
 		for (int q = 0; q < natoms; q++) {
 			vpFrozenAtoms[q] = false;
 		}
-		return;
+		return; // Finish the function
 	}
 
 
@@ -204,41 +219,40 @@ void createPores(){
 		vpFrozenAtoms[q] = false;
 	}
 
-    for (int pore = 0; pore < poreCnt; pore++) {
-        center[0] = L*Random::ran0(seed);
-        center[1] = L*Random::ran0(seed);
-        center[2] = L*Random::ran0(seed);
-        //cout << "Chose pore center at " << center[0] << "  " << center[1] << "  " << center[2] << endl;
-        for (int i = 0; i < natoms; i++) {
-            rij[0] = mpState[i][0] - center[0];
-            rij[1] = mpState[i][1] - center[1];
-            rij[2] = mpState[i][2] - center[2];
-            double lHalf = L/2.0;
-            if(rij[0] > lHalf){
-                rij[0] -= L;
-            }
-            else if(rij[0] < -lHalf){
-                rij[0] += L;
-            }
-            if(rij[1] > lHalf){
-                rij[1] -= L;
-            }
-            else if(rij[1] < -lHalf){
-                rij[1] += L;
-            }
-            if(rij[2] > lHalf){
-                rij[2] -= L;
-            }
-            else if(rij[2] < -lHalf){
-                rij[2] += L;
-            }
-            
-            
-            r = sqrt(rij[0]*rij[0]+rij[1]*rij[1]+rij[2]*rij[2]);
-            if (r < poreRadius) {
-                vpFrozenAtoms[i] = true;
-            }
-        }
+	for (int pore = 0; pore < poreCnt; pore++) {
+		center[0] = L*Random::ran0(seed);
+		center[1] = L*Random::ran0(seed);
+		center[2] = L*Random::ran0(seed);
+		for (int i = 0; i < natoms; i++) {
+			rij[0] = mpState[i][0] - center[0];
+			rij[1] = mpState[i][1] - center[1];
+			rij[2] = mpState[i][2] - center[2];
+			double lHalf = L/2.0;
+			if(rij[0] > lHalf){
+				rij[0] -= L;
+			}
+			else if(rij[0] < -lHalf){
+				rij[0] += L;
+			}
+			if(rij[1] > lHalf){
+				rij[1] -= L;
+			}
+			else if(rij[1] < -lHalf){
+				rij[1] += L;
+			}
+			if(rij[2] > lHalf){
+				rij[2] -= L;
+			}
+			else if(rij[2] < -lHalf){
+				rij[2] += L;
+			}
+
+
+			r = sqrt(rij[0]*rij[0]+rij[1]*rij[1]+rij[2]*rij[2]);
+			if (r < poreRadius) {
+				vpFrozenAtoms[i] = true;
+			}
+		}
 	}
 
 	for (int j = 0; j < natoms; j++) {
@@ -248,7 +262,6 @@ void createPores(){
 			mpState[j][5] = 0;
 		}
 	}
-    writeFrozenState(0);
 	cout << "Pore radius = " << poreRadius << " sigma." << endl;
 }
 
@@ -278,27 +291,27 @@ void writeState(int frameNum){
 	fprintf(outFile, "%i\n", natoms);
 	fprintf(outFile, "Argon atom system state\n");
 	for(int i = 0; i < natoms; i++){
-        if(vpFrozenAtoms[i]){
-            //cout << "Found frozen atom" << endl;
-            fprintf(outFile, 
-				"Af %e %e %e %e %e %e\n", 
-				mpState[i][0], 
-				mpState[i][1], 
-				mpState[i][2], 
-				mpState[i][3], 
-				mpState[i][4], 
-				mpState[i][5]);
-        }
-        else{
-            fprintf(outFile, 
-				"Ar %e %e %e %e %e %e\n", 
-				mpState[i][0], 
-				mpState[i][1], 
-				mpState[i][2], 
-				mpState[i][3], 
-				mpState[i][4], 
-				mpState[i][5]);
-        }
+		if(vpFrozenAtoms[i]){
+		    //cout << "Found frozen atom" << endl;
+		    fprintf(outFile, 
+					"Af %e %e %e %e %e %e\n", 
+					mpState[i][0], 
+					mpState[i][1], 
+					mpState[i][2], 
+					mpState[i][3], 
+					mpState[i][4], 
+					mpState[i][5]);
+		}
+		else{
+		    fprintf(outFile, 
+					"Ar %e %e %e %e %e %e\n", 
+					mpState[i][0], 
+					mpState[i][1], 
+					mpState[i][2], 
+					mpState[i][3], 
+					mpState[i][4], 
+					mpState[i][5]);
+		}
 	}
     
 	fclose(outFile);
@@ -308,7 +321,6 @@ void writeState(int frameNum){
 void loadState(int frameNum){
 	char fileName[256];
 	sprintf(fileName, "%sStates/%04d.xyz", outputPath, frameNum);
-    //cout << fileName << endl;
 	FILE* inFile;
 	long lSize;
 	inFile = fopen(fileName, "r");
@@ -341,16 +353,7 @@ void loadState(int frameNum){
 		fscanf(inFile, "%lf", &mpState[i][5]);
 	}
 	cout <<  "Done loading state\n-----\n";
-    fclose(inFile);
-	// Init simulation variables
-	L 	= b*Nc;
-	boxSize = 3; // 3 sigma in real units
-	boxes 	= ceil(L/boxSize);
-	mpA 	= matrix(natoms,3);
-	//-- Divide the domain into boxes of size rc
-	cBox = Cube(boxes,boxes,boxes); 
-	vpLinkedList = new int[natoms];
-	refreshBoxes();
+    	fclose(inFile);
 }
 
 void applyForce(int i, int j){

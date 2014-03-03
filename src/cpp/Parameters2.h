@@ -8,11 +8,12 @@ using namespace physical::unit;
 const double 	sigma 	= 3.405; 	//E-10
 const double 	b 	= 5.720/sigma; 	//E-10
 const double 	mass 	= 39.948*amu;
-const double 	T	= 0;
 const double 	e0	= 119.8*K_B;
+const double	T0	= e0/K_B;
+const double 	T	= 0.851*T0;
 const double 	v0	= sqrt(e0/mass);
 const double 	stdDev 	= sqrt(K_B*T/mass);
-const int	Nc	= 20;
+const int	Nc	= 8;
 
 /////////////////////////////////////////////////
 // 		Simulation Variables
@@ -20,10 +21,12 @@ const int	Nc	= 20;
 
 const double 	dt	= 0.02;
 const double 	finalT  = 200*dt;
-const int 	dumpRate 	= 1;
-const double	targetT = 0.851;
+const int 	dumpRate 	= 10;
+const double	targetT = 0.851*T0;
 const double	tau	= 20*dt;
 
-const bool	usePores = true;
+const bool	usePores = false;
 const double	poreRadius = 2*nm/(sigma*1e-10);
 const int	poreCnt = 20;
+
+const bool	useCylinders = false;
