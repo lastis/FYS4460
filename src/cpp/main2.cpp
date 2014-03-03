@@ -83,6 +83,7 @@ int 	boxes;
 int*	vpLinkedList;
 bool*	vpFrozenAtoms;
 
+long	seed = 120;
 double 	aij[3];
 double 	rij[3];
 double 	r2;
@@ -148,12 +149,11 @@ int main(int nargs, char** argsv){
 }
 
 void createCylindricPores(){
-	long 	seed = 123;
 	double 	centerXY[2] = {0,0};
 	double 	r = 0;
 
 	for (int q = 0; q < natoms; q++) {
-		vpFrozenAtoms[q] = false;
+		vpFrozenAtoms[q] = true;
 	}
 
 	using namespace PeriodicBounds;
@@ -167,7 +167,7 @@ void createCylindricPores(){
 
 			r = sqrt(rij[0]*rij[0]+rij[1]*rij[1]);
 			if (r < poreCylRadius) {
-				vpFrozenAtoms[i] = true;
+				vpFrozenAtoms[i] = false;
 			}
 		}
 	}
@@ -255,7 +255,6 @@ void writeFrozenState(){
 }
 
 void createPores(){
-	long 	seed = 123;
 	double 	center[3] = {0,0,0};
 	double 	r 	= 0;
 
@@ -665,7 +664,6 @@ void applyBerendsenThermostat(){
 }
 
 void applyAndersenThermostat(){
-    long seed = 123;
     double ran = 0;
     for(int i = 0; i < natoms; i++){
         if(vpFrozenAtoms[i] = true) continue;
