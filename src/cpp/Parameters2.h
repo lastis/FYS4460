@@ -13,7 +13,7 @@ const double	T0	= e0/K_B;
 const double 	T	= 0.851*T0;
 const double 	v0	= sqrt(e0/mass);
 const double 	stdDev 	= sqrt(K_B*T/mass);
-const int	Nc	= 8;
+const int	Nc	= 20;
 
 /////////////////////////////////////////////////
 // 		Simulation Variables
@@ -24,6 +24,7 @@ const double 	finalT  = 200*dt;
 const int 	dumpRate 	= 10;
 const double	targetT = 0.851*T0;
 const double	tau	= 20*dt;
+const double    boxSize = 1;
 
 const bool	usePores = false;
 const double	poreRadius = 1*nm/(sigma*1e-10);

@@ -69,13 +69,13 @@ extern const double 	e0;
 extern const double 	v0;
 extern const double 	stdDev;
 extern const int	Nc;
+extern const double  boxSize;
 
 
 Cube	cBox;
 Matrix	mState;
 double** mpState;
 double** mpA;
-double  boxSize;
 double 	L;
 double	curT;
 int 	natoms;
@@ -100,8 +100,8 @@ int main(int nargs, char** argsv){
 	int 	frameNum = atoi(argsv[1]);
     
     	// Set outputpath
-    	sprintf(outputPath, "../../res/");
-    	//sprintf(outputPath, "/home/andrenos/work/FYS4460/");
+    	//sprintf(outputPath, "../../res/");
+    sprintf(outputPath, "/home/andrenos/work/FYS4460/");
     
 	loadState(frameNum); 
 	initLocalParam();
@@ -186,7 +186,7 @@ void createCylindricPores(){
 void initLocalParam(){
 	// Init simulation variables
 	L 	= b*Nc;
-	boxSize = 3; // 3 sigma in real units
+	//boxSize = 1; // 3 sigma in real units
 	boxes 	= ceil(L/boxSize);
 	mpA 	= matrix(natoms,3);
 	//-- Divide the domain into boxes of size rc
@@ -435,16 +435,14 @@ void computeForce(){
     
     // Loop through all boxes
     for(int i = 0; i < boxes; i++){
+        //cout << "There are " << omp_get_num_threads() << "threads" << endl;
         for(int j = 0; j < boxes; j++){
             for(int k = 0; k < boxes; k++){
-                
                 atom1 = cBox(i,j,k);
-
-		// Skip frozen atoms
-		if(vpFrozenAtoms[atom1] == true){
-			atom1 = vpLinkedList[atom1];
-		}
-                
+                // Skip frozen atoms
+                if(vpFrozenAtoms[atom1] == true){
+                    atom1 = vpLinkedList[atom1];
+                }
                 while(atom1 != -1){
                     // Loop through all neighbouring boxes
                     for(int x = i-1; x <= i+1; x++){
@@ -476,6 +474,7 @@ void doVerletIntegration(){
 	integration integration scheme. It takes a state array as argument which
 	should contain a number of arrays on the form [x, y, z, vx, vy, vz],the
 	number of atoms and the time-step*/
+    
     
 	for(int i = 0; i < natoms; i++){
 		// Skip atom if frozen
