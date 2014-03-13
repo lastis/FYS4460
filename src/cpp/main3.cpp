@@ -117,7 +117,7 @@ int main(int nargs, char** argsv){
 	computeForce();
 	cout << "\nStarting time integration. " << endl;
 	cout << "-------------------------------------\n\n";
-	clock_t start = clock(); clock_t end;
+	double start = omp_get_wtime(); double end;
 	int counter = 1;
 	for(double t = dt; t <= finalT; t = counter*dt){
 		doVerletIntegration();
@@ -130,7 +130,7 @@ int main(int nargs, char** argsv){
 			computeEnergy();
 			computeTemperature(true); 
 			computePressure();
-			end = clock();
+			end = omp_get_wtime();
 			// Write out
 			writeState(frameNum);
 			cout << "Dumping .xyz at step " 
@@ -138,7 +138,7 @@ int main(int nargs, char** argsv){
 			cout << "T: " << T << ", dt = " << dt 
 				<< " , steps: " << finalT/dt << endl;
 			cout << "Time since last dump: " 
-				<< double(end - start)/CLOCKS_PER_SEC << endl;
+				<< double(end - start) << endl;///CLOCKS_PER_SEC << endl;
 			cout << "-------------------------------------" 
 				<< endl << endl;
 			// Start the clock again
@@ -409,7 +409,7 @@ void applyForce(int i, int j){
 		rij[2] += L;
 	}
     
-	/* Efficient calculation of the three needed numbers */
+	// Efficient calculation of the three needed numbers 
 	r2 = rij[0]*rij[0] + rij[1]*rij[1] + rij[2]*rij[2];
 	r2i = 1.0/r2;
 	r6i = r2i * r2i * r2i;
@@ -418,10 +418,12 @@ void applyForce(int i, int j){
 	for(int k = 0; k < 3; k++){
 		aij[k] = 24 * (2*r12i - r6i) * r2i * rij[k];
 	}
+	// TODO We need to do something here!!
 	mpA[i][0] += aij[0];
 	mpA[i][1] += aij[1];
 	mpA[i][2] += aij[2];
 
+	// TODO We need to do something here!!
 	sumPressure += rij[0]*mpA[i][0] 
 		+ rij[1]*mpA[i][1] 
 		+ rij[2]*mpA[i][2];
@@ -438,12 +440,11 @@ void computeForce(){
 		mpA[i][2] = 0;
 	}
     
-	// Loop through all boxes // 
-	/*
+	// Loop through all boxes // reduction(+:sumPressure)
 	#pragma omp parallel for private(atom1, atom2, aij, rij, r2, r2i, \
-		r6i, r12i) reduction(+:sumPressure)
-	*/
+		r6i, r12i) 
 	for(int atom1 = 0; atom1 < natoms; atom1++){
+		double sum = 0;
 		if(vpFrozenAtoms[atom1] == true){
 			continue;
 		}
