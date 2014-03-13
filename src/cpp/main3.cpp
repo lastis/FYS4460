@@ -101,8 +101,8 @@ int main(int nargs, char** argsv){
 	int 	frameNum = atoi(argsv[1]);
     
     	// Set outputpath
-    	//sprintf(outputPath, "../../res/");
-    sprintf(outputPath, "/home/andrenos/work/FYS4460/");
+    	sprintf(outputPath, "../../res/");
+    	//sprintf(outputPath, "/home/andrenos/work/FYS4460/");
     
 	loadState(frameNum); 
 	initLocalParam();
@@ -127,7 +127,7 @@ int main(int nargs, char** argsv){
 		if(counter % dumpRate == 0){
 			// State calculations
 			frameNum++;
-			//computeEnergy();
+			computeEnergy();
 			computeTemperature(true); 
 			computePressure();
 			end = clock();
@@ -383,10 +383,12 @@ void loadState(int frameNum){
 }
 
 void applyForce(int i, int j){
+	double r2, r2i, r61,r12i, aij[3], rij[3];
+	double lHalf = L/2.0;
+
 	rij[0] = mpState[i][0] - mpState[j][0];
 	rij[1] = mpState[i][1] - mpState[j][1];
 	rij[2] = mpState[i][2] - mpState[j][2];
-	double lHalf = L/2.0;
 
 	if(rij[0] > lHalf){
 		rij[0] -= L;
@@ -407,7 +409,6 @@ void applyForce(int i, int j){
 		rij[2] += L;
 	}
     
-    double r2, r2i, r6i, r12i;
 	/* Efficient calculation of the three needed numbers */
 	r2 = rij[0]*rij[0] + rij[1]*rij[1] + rij[2]*rij[2];
 	r2i = 1.0/r2;
@@ -421,7 +422,9 @@ void applyForce(int i, int j){
 	mpA[i][1] += aij[1];
 	mpA[i][2] += aij[2];
 
-	sumPressure += rij[0]*mpA[i][0] + rij[1]*mpA[i][1] + rij[2]*mpA[i][2];
+	sumPressure += rij[0]*mpA[i][0] 
+		+ rij[1]*mpA[i][1] 
+		+ rij[2]*mpA[i][2];
 }
 
 void computeForce(){
@@ -435,32 +438,34 @@ void computeForce(){
 		mpA[i][2] = 0;
 	}
     
-    // Loop through all boxes
-    //#pragma omp parallel for private(atom1, atom2, aij, rij, r2, r2i, r6i, r12i) reduction(+:sumPressure)
-    for(int atom1 = 0; atom1 < natoms; atom1++){
-    	if(vpFrozenAtoms[atom1] == true){
-    		continue;
-    	}
-    	int xCur = mpState[atom1][0]/boxSize;
-    	int yCur = mpState[atom1][1]/boxSize;
-    	int zCur = mpState[atom1][2]/boxSize;
-    	
-    	for(int x = xCur-1; x <= xCur+1; x++){
+	// Loop through all boxes // 
+	/*
+	#pragma omp parallel for private(atom1, atom2, aij, rij, r2, r2i, \
+		r6i, r12i) reduction(+:sumPressure)
+	*/
+	for(int atom1 = 0; atom1 < natoms; atom1++){
+		if(vpFrozenAtoms[atom1] == true){
+			continue;
+		}
+		int xCur = mpState[atom1][0]/boxSize;
+		int yCur = mpState[atom1][1]/boxSize;
+		int zCur = mpState[atom1][2]/boxSize;
+		
+		for(int x = xCur-1; x <= xCur+1; x++){
 			for(int y = yCur-1; y <= yCur+1; y++){
 				for(int z = zCur-1; z <= zCur+1; z++){
-					atom2 = cBox(x,y,z); // Allows periodic indicies
-                    while(atom2 != -1){
+					// Allows periodic indicies
+					atom2 = cBox(x,y,z); 
+					while(atom2 != -1){
 						if(atom2 != atom1){
 							applyForce(atom1,atom2);
 						}
 						atom2 = vpLinkedList[atom2];
 					}
-					//cout << "Thread num: " << omp_get_thread_num() << endl;
-					
 				}
 			}
 		}
-    }
+	}
      /*
     for(int i = 0; i < boxes; i++){
         //cout << "There are " << omp_get_num_threads() << "threads" << endl;
@@ -505,7 +510,7 @@ void doVerletIntegration(){
 	should contain a number of arrays on the form [x, y, z, vx, vy, vz],the
 	number of atoms and the time-step*/
     
-    //#pragma omp parallel for 
+    	#pragma omp parallel for 
 	for(int i = 0; i < natoms; i++){
 		// Skip atom if frozen
 		if (vpFrozenAtoms[i] == true) continue;
@@ -526,7 +531,7 @@ void doVerletIntegration(){
 	/* At this point, recalculate forces */
 	computeForce();
     
-    //#pragma omp parallel for
+    	#pragma omp parallel for
 	for(int i = 0; i < natoms; i++){ 
 		// Skip atom if frozen
 		if (vpFrozenAtoms[i] == true) continue;
@@ -545,35 +550,56 @@ void computeEnergy(){
 	Ek = 0.5 * v * v. The kinetic energy is given by
 	Ep = 4([1/r]^12 - [1/r]^6) */
 	double E = 0; double Ek = 0; double Ep = 0;
-    //double r2, r2i, r6i, r12i, rij[3];
-    #pragma omp parallel for private(Ek, Ep, r2, r2i, r6i, r12i, rij)
+    	#pragma omp parallel for private(Ek, Ep, r2, r2i, r6i, r12i, rij)
 	for(int i = 0; i < natoms; i++){
-        double tmp = cBox(1,1,1);
-		Ep = 0*tmp;
+		Ep = 0;
 		// Add the kinetic energy for the atom
 		Ek = 0.5*(mpState[i][3]*mpState[i][3] 
 				+ mpState[i][4]*mpState[i][4] 
 				+ mpState[i][5]*mpState[i][5]);
-		// Then compute the total potential energy for this atom;
-		for(int j = 0; j < natoms && i!=j; j++){
-			rij[0] = mpState[i][0] - mpState[j][0];
-			rij[1] = mpState[i][1] - mpState[j][1];
-			rij[2] = mpState[i][2] - mpState[j][2];
 
-			/* Efficient calculation of the three needed numbers */
-			r2 = rij[0]*rij[0] 
-				+ rij[1]*rij[1] 
-				+ rij[2]*rij[2];
-			r2i = 1.0/r2;
-			r6i = r2i * r2i * r2i;
-			r12i = r6i * r6i;
+		int xCur = mpState[i][0]/boxSize;
+		int yCur = mpState[i][1]/boxSize;
+		int zCur = mpState[i][2]/boxSize;
+		
+		for(int x = xCur-1; x <= xCur+1; x++){
+			for(int y = yCur-1; y <= yCur+1; y++){
+				for(int z = zCur-1; z <= zCur+1; z++){
+					// Allows periodic indicies
+					int j = cBox(x,y,z); 
+					while(j != -1){
+						if(i == j){
+							// Skip
+							j = vpLinkedList[j];
+							continue;
+						}
+						rij[0] = mpState[i][0] 
+							- mpState[j][0];
+						rij[1] = mpState[i][1] 
+							- mpState[j][1];
+						rij[2] = mpState[i][2] 
+							- mpState[j][2];
 
-			Ep += 4 * (r12i - r6i);
+						// Efficient calculation of the 
+						// three needed numbers 
+						r2 = rij[0]*rij[0] 
+							+ rij[1]*rij[1] 
+							+ rij[2]*rij[2];
+						r2i = 1.0/r2;
+						r6i = r2i * r2i * r2i;
+						r12i = r6i * r6i;
+
+						Ep += 4 * (r12i - r6i);
+						// Next atom
+						j = vpLinkedList[j];
+					}
+				}
+			}
 		}
-        #pragma omp critical
-        {
-            E += Ek + Ep;
-        }
+		#pragma omp critical
+		{
+		    E += Ek + Ep;
+		}
 	}
 	cout << "Total energy: " << E << endl;
 
@@ -589,7 +615,7 @@ void computeTemperature(bool write){
 	// It is important the temperature is calculated before
 	// pressure and the thermostat
 	double sumTemp = 0;
-    #pragma omp parallel for reduction(+:sumTemp)
+	//#pragma omp parallel for reduction(+:sumTemp)
 	for(int i = 0; i < natoms; i++){
 		sumTemp += 0.5*(mpState[i][3]*mpState[i][3] 
 				+ mpState[i][4]*mpState[i][4] 
@@ -610,7 +636,6 @@ void computeTemperature(bool write){
 }
 
 void computeRadialDistr(double lHalf){
-    
     /* Use distance bins with width L/100 */
     int binCount[100];
     // Set all bincount to zero initially

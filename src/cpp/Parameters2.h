@@ -13,23 +13,23 @@ const double	T0	= e0/K_B;
 const double 	T	= 0.851*T0;
 const double 	v0	= sqrt(e0/mass);
 const double 	stdDev 	= sqrt(K_B*T/mass);
-const int	Nc	= 40;
+const int	Nc	= 20;
 
 /////////////////////////////////////////////////
 // 		Simulation Variables
 /////////////////////////////////////////////////
 
 const double 	dt	= 0.02;
-const double 	finalT  = 2000*dt;
-const int 	dumpRate 	= 200;
+const double 	finalT  = 100*dt;
+const int 	dumpRate 	= 10;
 const double	targetT = 0.851*T0;
 const double	tau	= 20*dt;
-const double    boxSize = 1;
+const double    boxSize = 2;
 
 const bool	usePores = false;
 const double	poreRadius = 1*nm/(sigma*1e-10);
 const int	poreCnt = 1;
 
-const bool	useCylinders = true;
-const double	poreCylRadius = 1*nm/(sigma*1e-10);
-const int	poreCylCnt = 2;
+const bool	useCylinders = false;
+const double	poreCylRadius = 2*nm/(sigma*1e-10);
+const int	poreCylCnt = 4;
