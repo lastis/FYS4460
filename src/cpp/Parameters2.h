@@ -20,9 +20,10 @@ const int	Nc	= 20;
 /////////////////////////////////////////////////
 
 const double 	dt	= 0.02;
-const double 	finalT  = 100*dt;
-const int 	dumpRate 	= 10;
-const double	targetT = 0.851*T0;
+const double 	finalT  = 1000*dt;
+const int 	dumpRate 	= 100;
+//const double	targetT = 0.851*T0;
+const double	targetT = 1.20*T0;
 const double	tau	= 20*dt;
 const double    boxSize = 2;
 
@@ -30,6 +31,6 @@ const bool	usePores = false;
 const double	poreRadius = 1*nm/(sigma*1e-10);
 const int	poreCnt = 1;
 
-const bool	useCylinders = false;
+const bool	useCylinders = true;
 const double	poreCylRadius = 2*nm/(sigma*1e-10);
 const int	poreCylCnt = 4;

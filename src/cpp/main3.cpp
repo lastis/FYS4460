@@ -83,6 +83,7 @@ int 	natoms;
 int 	boxes;
 int*	vpLinkedList;
 bool*	vpFrozenAtoms;
+int	frozenAtoms;
 
 long	seed = 120;
 double 	aij[3];
@@ -153,6 +154,7 @@ void createCylindricPores(){
 	double 	centerXY[2] = {0,0};
 	double 	r = 0;
 
+	frozenAtoms = natoms;
 	for (int q = 0; q < natoms; q++) {
 		vpFrozenAtoms[q] = true;
 	}
@@ -169,6 +171,7 @@ void createCylindricPores(){
 			r = sqrt(rij[0]*rij[0]+rij[1]*rij[1]);
 			if (r < poreCylRadius) {
 				vpFrozenAtoms[i] = false;
+				frozenAtoms -= 1;
 			}
 		}
 	}
@@ -418,15 +421,15 @@ void applyForce(int i, int j){
 	for(int k = 0; k < 3; k++){
 		aij[k] = 24 * (2*r12i - r6i) * r2i * rij[k];
 	}
-	// TODO We need to do something here!!
+
 	mpA[i][0] += aij[0];
 	mpA[i][1] += aij[1];
 	mpA[i][2] += aij[2];
 
-	// TODO We need to do something here!!
 	sumPressure += rij[0]*mpA[i][0] 
 		+ rij[1]*mpA[i][1] 
 		+ rij[2]*mpA[i][2];
+		
 }
 
 void computeForce(){
@@ -441,8 +444,11 @@ void computeForce(){
 	}
     
 	// Loop through all boxes // reduction(+:sumPressure)
+	/*
+	*/
 	#pragma omp parallel for private(atom1, atom2, aij, rij, r2, r2i, \
 		r6i, r12i) 
+
 	for(int atom1 = 0; atom1 < natoms; atom1++){
 		double sum = 0;
 		if(vpFrozenAtoms[atom1] == true){
@@ -618,12 +624,13 @@ void computeTemperature(bool write){
 	double sumTemp = 0;
 	//#pragma omp parallel for reduction(+:sumTemp)
 	for(int i = 0; i < natoms; i++){
+		if(vpFrozenAtoms[i] == true) continue;
 		sumTemp += 0.5*(mpState[i][3]*mpState[i][3] 
 				+ mpState[i][4]*mpState[i][4] 
 				+ mpState[i][5]*mpState[i][5]);
 	}
 
-	double newT = 2 * sumTemp / (3 * natoms * K_B);
+	double newT = 2 * sumTemp / (3 * (natoms-frozenAtoms) * K_B);
 	if (write){
 		cout << "Temperature: " << newT*e0 << " Kelvin." << endl;
 		char fileName[64];
