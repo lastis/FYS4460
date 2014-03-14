@@ -443,12 +443,11 @@ void computeForce(){
 		mpA[i][2] = 0;
 	}
     
-	// Loop through all boxes // reduction(+:sumPressure)
+	// Loop through all boxes
 	/*
 	*/
 	#pragma omp parallel for private(atom1, atom2, aij, rij, r2, r2i, \
-		r6i, r12i) 
-
+		r6i, r12i) reduction(+:sumPressure)
 	for(int atom1 = 0; atom1 < natoms; atom1++){
 		double sum = 0;
 		if(vpFrozenAtoms[atom1] == true){
