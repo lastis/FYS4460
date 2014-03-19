@@ -11,6 +11,7 @@ const double 	mass 	= 39.948*amu;
 const double 	e0	= 119.8*K_B;
 const double	T0	= e0/K_B;
 const double 	T	= 0.851*T0;
+const double    t0 = sigma*1E-10*sqrt(mass/e0);
 const double 	v0	= sqrt(e0/mass);
 const double 	stdDev 	= sqrt(K_B*T/mass);
 const int	Nc	= 20;
@@ -20,7 +21,7 @@ const int	Nc	= 20;
 /////////////////////////////////////////////////
 
 const double 	dt	= 0.02;
-const double 	finalT  = 1000*dt;
+const double 	finalT  = 3000*dt;
 const int 	dumpRate 	= 100;
 //const double	targetT = 0.851*T0;
 const double	targetT = 1.20*T0;

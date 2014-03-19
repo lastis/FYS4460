@@ -68,6 +68,7 @@ extern const double 	mass;
 extern const double 	T;
 extern const double 	e0;
 extern const double 	v0;
+extern const double     t0;
 extern const double 	stdDev;
 extern const int	Nc;
 extern const double  boxSize;
@@ -97,6 +98,8 @@ char 	tmpstr[64];
 
 char outputPath[256];
 
+bool loadedFrozenState = false;
+
 int main(int nargs, char** argsv){
 	/* Read starting point and initialize corresponding variables */
 	int 	frameNum = atoi(argsv[1]);
@@ -107,9 +110,10 @@ int main(int nargs, char** argsv){
     
 	loadState(frameNum); 
 	initLocalParam();
-	if (usePores) createPores();
-	if (useCylinders) createCylindricPores();
+	if (usePores && !loadedFrozenState) createPores();
+	if (useCylinders && !loadedFrozenState) createCylindricPores();
 	writeFrozenState();
+    writeState(frameNum);
 	printSystemStats(frameNum);
 
 	/*-- Calculate force once before starting the simulation. 
@@ -198,13 +202,15 @@ void initLocalParam(){
 	vpLinkedList = new int[natoms];
 	refreshBoxes();
 	// Variables for pores
-	vpFrozenAtoms	= new bool[natoms];
-	if (usePores == false && useCylinders == false) {
-		for (int q = 0; q < natoms; q++) {
-			// Unfreeze all atoms
-			vpFrozenAtoms[q] = false;
-		}
-	}
+    if(!loadedFrozenState){
+        vpFrozenAtoms	= new bool[natoms];
+        if (usePores == false && useCylinders == false) {
+            for (int q = 0; q < natoms; q++) {
+                // Unfreeze all atoms
+                vpFrozenAtoms[q] = false;
+            }
+        }
+    }
 
 }
 
@@ -374,6 +380,22 @@ void loadState(int frameNum){
 	// Read the position and velocity of the particles form the file
 	for(int i = 0; i < natoms; i++){
 		fscanf(inFile, "%s", line);
+        if(line[1] == 'f'){
+            if( loadedFrozenState != true){
+                cout << "Chosen state already frozen" << endl;
+                loadedFrozenState = true;
+                frozenAtoms = 0;
+                vpFrozenAtoms = new bool[natoms];
+                for(int j = 0; j < i; j++){
+                    vpFrozenAtoms[j] = false;
+                }
+            }
+            vpFrozenAtoms[i] = true;
+            frozenAtoms++;
+        }
+        else if(loadedFrozenState){
+            vpFrozenAtoms[i] = false;
+        }
 		fscanf(inFile, "%lf", &mpState[i][0]);
 		fscanf(inFile, "%lf", &mpState[i][1]);
 		fscanf(inFile, "%lf", &mpState[i][2]);
@@ -471,6 +493,7 @@ void computeForce(){
 				}
 			}
 		}
+        mpA[atom1][2] += 0.1*e0*t0/(sigma*1E-10);
 	}
      /*
     for(int i = 0; i < boxes; i++){
@@ -723,8 +746,8 @@ void applyBerendsenThermostat(){
     double gamma = sqrt(1 + dt/tau*(targetT/curT - 1));
     //cout << "Gamma: " << gamma << endl;
     for(int i = 0; i < natoms; i++){
-	// Skip if frozen
-	if (vpFrozenAtoms[i] == true) continue;
+        // Skip if frozen
+        if (vpFrozenAtoms[i] == true) continue;
         mpState[i][3] *= gamma;
         mpState[i][4] *= gamma;
         mpState[i][5] *= gamma;

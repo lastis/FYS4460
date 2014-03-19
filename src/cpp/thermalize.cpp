@@ -139,7 +139,7 @@ int main(int nargs, char** argsv){
             termcount = 0;
         }
 	}
-    writeState(0);
+    writeState(framenum);
 	return 0;
 }
 
