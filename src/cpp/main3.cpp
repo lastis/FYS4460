@@ -4,7 +4,7 @@
 #include <cmath>
 #include <time.h>
 #include "CPhys.h"
-#include "Parameters2.h"
+#include "Parameters3.h"
 #include <omp.h>
 using namespace std;
 using namespace CPhys;
@@ -26,6 +26,8 @@ void computeTemperature(bool write);
 void computeRadialDistr(double lHalf);
 
 void computePressure();
+
+void computeDiffusion();
 
 void applyBerendsenThermostat();
 
@@ -58,6 +60,10 @@ extern const int	poreCnt;
 extern const bool	useCylinders;
 extern const double	poreCylRadius;
 extern const int	poreCylCnt;
+
+extern const bool useExternalForce;
+extern const double externalForce;
+
 /////////////////////////////////////////////////
 // 		State Variables
 /////////////////////////////////////////////////
@@ -76,8 +82,12 @@ extern const double  boxSize;
 
 Cube	cBox;
 Matrix	mState;
+Matrix  mInitState;
+Matrix  mBoxMove;
 double** mpState;
+double** mpInitState;
 double** mpA;
+double** mpBoxMove;
 double 	L;
 double	curT;
 int 	natoms;
@@ -135,6 +145,7 @@ int main(int nargs, char** argsv){
 			computeEnergy();
 			computeTemperature(true); 
 			computePressure();
+            computeDiffusion();
 			end = omp_get_wtime();
 			// Write out
 			writeState(frameNum);
@@ -197,6 +208,11 @@ void initLocalParam(){
 	//boxSize = 1; // 3 sigma in real units
 	boxes 	= ceil(L/boxSize);
 	mpA 	= matrix(natoms,3);
+    mInitState = Matrix(mState);
+    mpInitState = mInitState.getArrayPointer();
+    mBoxMove = Matrix(natoms,3);
+    mpBoxMove = mBoxMove.getArrayPointer();
+    
 	//-- Divide the domain into boxes of size rc
 	cBox = Cube(boxes,boxes,boxes); 
 	vpLinkedList = new int[natoms];
@@ -369,6 +385,7 @@ void loadState(int frameNum){
 	// Create the state array
 	mState = Matrix(natoms,6);
 	mpState = mState.getArrayPointer();
+    
 
 	cout << "-----\n" << "Loading state " 
 	    << fileName << endl 
@@ -410,7 +427,7 @@ void loadState(int frameNum){
 void applyForce(int i, int j){
 	double r2, r2i, r61,r12i, aij[3], rij[3];
 	double lHalf = L/2.0;
-
+    
 	rij[0] = mpState[i][0] - mpState[j][0];
 	rij[1] = mpState[i][1] - mpState[j][1];
 	rij[2] = mpState[i][2] - mpState[j][2];
@@ -443,7 +460,7 @@ void applyForce(int i, int j){
 	for(int k = 0; k < 3; k++){
 		aij[k] = 24 * (2*r12i - r6i) * r2i * rij[k];
 	}
-
+    
 	mpA[i][0] += aij[0];
 	mpA[i][1] += aij[1];
 	mpA[i][2] += aij[2];
@@ -493,7 +510,10 @@ void computeForce(){
 				}
 			}
 		}
-        mpA[atom1][2] += 0.1*e0*t0/(sigma*1E-10);
+        if( useExternalForce ){
+            mpA[atom1][2] += externalForce;
+        }
+        
 	}
      /*
     for(int i = 0; i < boxes; i++){
@@ -553,9 +573,9 @@ void doVerletIntegration(){
 		mpState[i][2] += mpState[i][5]*dt;
 
 		/* Insert periodic boundaries */
-		PeriodicBounds::correctPos(mpState[i][0],L);
-		PeriodicBounds::correctPos(mpState[i][1],L);
-		PeriodicBounds::correctPos(mpState[i][2],L);
+		PeriodicBounds::correctPos(mpState[i][0],L,mpBoxMove[i][0]);
+		PeriodicBounds::correctPos(mpState[i][1],L,mpBoxMove[i][1]);
+		PeriodicBounds::correctPos(mpState[i][2],L,mpBoxMove[i][2]);
 	}
 	/* At this point, recalculate forces */
 	computeForce();
@@ -741,6 +761,28 @@ void computePressure(){
 	fprintf(outFile, "\n");
 	fclose(outFile);
 }
+
+void computeDiffusion(){
+    double sum = 0;
+    for(int i = 0; i < natoms; i++){
+        rij[0] = mpBoxMove[i][0]*L + mpState[i][0] - mpInitState[i][0];
+        rij[1] = mpBoxMove[i][1]*L + mpState[i][1] - mpInitState[i][1];
+        rij[2] = mpBoxMove[i][2]*L + mpState[i][2] - mpInitState[i][2];
+        
+        r2 = rij[0]*rij[0] + rij[1]*rij[1] + rij[2]*rij[2];
+        sum += r2*sigma*sigma;
+    }
+    sum /= natoms;
+    char filename[128];
+    sprintf(filename, "%s/Measurements/Diffusion.dat", outputPath);
+    FILE *outFile;
+    outFile = fopen(filename, "a");
+    fprintf(outFile, "%e\n", sum);
+    fclose(outFile);
+}
+
+
+
 
 void applyBerendsenThermostat(){
     double gamma = sqrt(1 + dt/tau*(targetT/curT - 1));

@@ -35,3 +35,6 @@ const int	poreCnt = 1;
 const bool	useCylinders = false;
 const double	poreCylRadius = 2*nm/(sigma*1e-10);
 const int	poreCylCnt = 4;
+
+const bool useExternalForce = false;
+const double externalForce = 0.1;

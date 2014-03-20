@@ -6,7 +6,7 @@ namespace CPhys{
 	double**	matrix(int n, int m);
 
 	namespace PeriodicBounds{
-		void 	correctPos(double& x, double& L);
+		void 	correctPos(double& x, double& L, double& move);
 		double 	getClosestDist(double& x1, double& x2, double& L);
 	}
 	namespace Lattice{

@@ -8,19 +8,6 @@
 using namespace std;
 using namespace CPhys;
 
-double** CPhys::matrixCM(int N, int M){
-    double **ptr1 	= new double*[N];
-	double *ptr2	= new double[N*M];
-    for(int i = 0; i < N; i++){
-		ptr1[i] = ptr2;
-	for (int i = 0; i < N; i++) {
-		for (int j = 0; j < M; j++) {
-			ptr1[i][j] = 0;
-		}
-	}
-	return ptr1;
-}
-
 double** CPhys::matrix(int N, int M){
 	/*
     double** mat = new double*[N]; 
@@ -42,12 +29,14 @@ double** CPhys::matrix(int N, int M){
 	return ptr1;
 }
 
-void	PeriodicBounds::correctPos(double& x, double& L){
+void	PeriodicBounds::correctPos(double& x, double& L, double& move){
 	if(x > L){
 		x -= L*(int(x/L));
+        move++;
 	}
 	else if(x < 0){
 		x -= L*(int(x/L)-1);
+        move--;
 	}
 }
 

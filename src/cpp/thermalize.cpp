@@ -4,7 +4,7 @@
 #include <cmath>
 #include <time.h>
 #include "CPhys.h"
-#include "Parameters2.h"
+#include "Parameters3.h"
 #include <omp.h>
 using namespace std;
 using namespace CPhys;
@@ -139,7 +139,7 @@ int main(int nargs, char** argsv){
             termcount = 0;
         }
 	}
-    writeState(framenum);
+    writeState(frameNum);
 	return 0;
 }
 
@@ -523,10 +523,11 @@ void doVerletIntegration(){
 		mpState[i][1] += mpState[i][4]*dt;
 		mpState[i][2] += mpState[i][5]*dt;
 
+        double dummy = 0;
 		/* Insert periodic boundaries */
-		PeriodicBounds::correctPos(mpState[i][0],L);
-		PeriodicBounds::correctPos(mpState[i][1],L);
-		PeriodicBounds::correctPos(mpState[i][2],L);
+		PeriodicBounds::correctPos(mpState[i][0],L,dummy);
+		PeriodicBounds::correctPos(mpState[i][1],L,dummy);
+		PeriodicBounds::correctPos(mpState[i][2],L,dummy);
 	}
 	/* At this point, recalculate forces */
 	computeForce();
