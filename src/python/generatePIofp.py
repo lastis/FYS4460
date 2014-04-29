@@ -1,22 +1,30 @@
 from pylab import*
 from scipy.ndimage import measurements
+import numpy as np
 
-def findNearest(array, value):
-	i = (abs(array-value)).argmin()
-	return array[i]
 
 x 	= 0.8
 pc 	= 0.59275
-nsample = 1000
+nsample = 5000
 p 	= arange(0.45,0.8,0.01)
-l      	= array([25.,50.,100.,200.])
+l      	= array([150.,300.,500.])
 ll      = l*l
 
 Pi = zeros((len(l),len(p)))
 
 for j in xrange(0,len(l)):
-	for i in xrange(0,len(p)):
-		for sample in xrange(0,nsample):
+        sys.stdout.write("\r%s\r" %(" "*30))
+        print "Generating for L = " + str(l[j])
+        for sample in xrange(0,nsample):
+                for i in xrange(0,len(p)):
+                        # Print to terminal every 1 percen
+                        if(sample%int(nsample/100) == 0):
+                            cent = int(sample*100/nsample)
+                            cent20 = cent/5
+                            sys.stdout.write("\r")
+                            sys.stdout.write("[%-20s] %d%%" %("="*cent20,cent))
+                            sys.stdout.flush()
+                        #Calculate
 			r = rand(l[j],l[j])
 			z = r < p[i]
 			lw, num = measurements.label(z)
@@ -28,8 +36,11 @@ for j in xrange(0,len(l)):
 			perc = perc_x[where(perc_x > 0)]
 			if (len(perc) > 0):
 				Pi[j,i] += 1
+sys.stdout.write("\r%s\r" %(" "*30))
+print "Done" 
 Pi /= nsample
 
 for i in xrange(len(l)):
+        np.savez(str(int(l[i])), p, Pi[i])
 	plot(p,Pi[i])
 show()
