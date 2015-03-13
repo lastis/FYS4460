@@ -4,12 +4,12 @@
 #include <cmath>
 #include <time.h>
 #include "CPhys.h"
-#include "Parameters.h"
+#include "Parameters1.h"
 using namespace std;
 using namespace CPhys;
 
 void verletIntegration(double**&   state, double**&   a, Cube& box, 
-		        int*&     pointer, double&   sum);
+		        int*&    pointer, double&   sum);
 
 void writeState(double**& state, int frameNum);
 
@@ -18,11 +18,11 @@ void loadState(Matrix& state, int frameNum);
 void applyForce(double**& a, double**& state, int i, int j, double& sum);
 
 void force(double**&       a, double**& state, Cube& box, 
-	    int*&     pointer, double&     sum);
+	    int*&    pointer, double&     sum);
 
 void computeEnergy(double**& state);
 
-double computeTemperature(double**& state);
+double computeTemperature(double**& state, bool write);
 
 void computeRadialDistr(double**& state, double Lhalf);
 
@@ -30,42 +30,38 @@ void Compute_pressure(double sum, double curT);
 
 void berendsenThermostat(double**& state, double T, double Tbath, double tau);
 
+void refreshBoxes(Cube &box, int*& pointer, double**& state);
 
-// State variables
+/////////////////////////////////////////////////
+// 		Simulation Variables
+/////////////////////////////////////////////////
 
-extern const double     amu; 
-extern const double     K_B; 
-extern const double 	sigma;
-extern const double 	b;
-extern const double	mass;
-extern const double 	T;
-extern const double	e0;
-extern const double	v0;
-extern const double	stdDev;
-// Simulation variables
 extern const double 	dt;
 extern const double 	finalT;
-	// Variables loaded from file
-extern int 	        Nc;
-extern int 	        natoms;
-extern double 	        L;
-extern double       	boxSize;
-extern int 	        boxes;
+extern const int 	dumpRate;
+extern const double	targetT;
+extern const double	tau;
+
+/////////////////////////////////////////////////
+// 		State Variables
+/////////////////////////////////////////////////
+
+extern const double 	sigma;
+extern const double 	b;
+extern const double 	mass;
+extern const double 	T;
+extern const double 	e0;
+extern const double 	v0;
+extern const double 	stdDev;
+extern const int	Nc;
+
+int 	myNc;
+int 	natoms;
+double 	L;
+double  boxSize;
+int 	boxes;
 
 
-void Refresh_boxes(Cube &box, int*& pointer, double**& state){
-	//-- Refresh boxes and linked list;
-	box = -1;
-	int ix, iy, iz;
-	for(int i = 0; i < natoms; i++){
-		pointer[i] = -1;
-		ix = int(state[i][0]/boxSize);
-		iy = int(state[i][1]/boxSize);
-		iz = int(state[i][2]/boxSize);
-		pointer[i] = box(ix, iy, iz);
-		box(ix, iy, iz) = i;  
-	}
-}
 
 int main(int nargs, char** argsv){
 	/* Read starting point and initialize corresponding variables */
@@ -79,26 +75,21 @@ int main(int nargs, char** argsv){
     
 	loadState(mState,frameNum); 
 	state 	= mState.getArrayPointer();
-	Nc 	= cbrt(natoms/4.); 
-	L 	= b*Nc;
-	boxes 	= 6; 
-	boxSize 	= L/boxes;
-
 
 	// Print out
 	sprintf(tmpstr,"Starting point: %04d.xyz",frameNum);
 	cout << tmpstr << endl; 
 
-	cout << "\nL: " << L << ", boxSize: " << boxSize << ", boxes: " << boxes 
-	    << endl;
+	cout << "\nL: " << L << ", boxSize: " << boxSize 
+		<< ", boxes: " << boxes << endl;
 	cout << "Density: " 
-	    << mass*natoms / 
-	    ((b*Nc*sigma*1E-10)*(b*Nc*sigma*1E-10)*(b*Nc*sigma*1E-10)) 
-	    << " kg/m^3" << endl;
+	     << mass*natoms / 
+	     ((b*myNc*sigma*1E-10)*(b*myNc*sigma*1E-10)*(b*myNc*sigma*1E-10)) 
+	     << " kg/m^3" << endl;
 	cout << "Actual system length: " << (b*sigma*1E-10) << " m" << endl;
 	cout << "Actual system volume: " 
-	    << (b*sigma*1E-10)*(b*sigma*1E-10)*(b*sigma*1E-10) << " m^3"
-	    << endl << endl;
+	     << (b*sigma*1E-10)*(b*sigma*1E-10)*(b*sigma*1E-10) << " m^3"
+	     << endl << endl;
    
     
     
@@ -109,27 +100,29 @@ int main(int nargs, char** argsv){
 	Cube box = Cube(boxes,boxes,boxes); 
 	box = -1; // Sets all entries to -1
 	int* pointer = new int[natoms];
-	Refresh_boxes(box,pointer,state);
+	refreshBoxes(box,pointer,state);
     
-	/*-- Calculate force once before starting the simulation. This is done in 
-	order to avoid having to calculate the force twice for each timestep */
+	/*-- Calculate force once before starting the simulation. 
+	 * This is done in order to avoid having to calculate the force 
+	 * twice for each timestep */
 	force(a,state,box,pointer,sum);
 
     
 	/* Perform time integration untill time T */
-	int dumprate = 10;
 	int counter = 0;
 
 	cout << "\nStarting time integration. " << endl;
 	cout << "-------------------------------------\n\n";
 	clock_t start = clock(); clock_t end;
 
-	for(double t = frameNum*dumprate*dt; t<finalT; t+=dt){
+	for(double t = dt; t<finalT; t+=dt){
 		counter++;
 		sum = 0;
 		verletIntegration(state,a,box,pointer,sum);
 
-		if(counter % dumprate == 0){
+		curT = computeTemperature(state,false); 
+		berendsenThermostat(state,curT,targetT,tau);
+		if(counter % dumpRate == 0){
 			cout << "Dumping .xyz at step " 
 				<< int(t/dt)+1 << " of " << finalT/dt << endl;
 			frameNum++;
@@ -137,11 +130,11 @@ int main(int nargs, char** argsv){
 
 			// State calculations
 
-			cout << "Boxsize: " << boxSize << endl;
 			cout << "T: " << T << ", dt = " << dt 
 				<< " , steps: " << finalT/dt << endl;
+			cout << "Temperature: " << curT
+				<< " Kelvin." << endl;
 			computeEnergy(state);
-			curT = computeTemperature(state); 
 			Compute_pressure(sum,curT);
 
 			end = clock();
@@ -155,10 +148,23 @@ int main(int nargs, char** argsv){
 	return 0;
 }
 
+void refreshBoxes(Cube &box, int*& pointer, double**& state){
+	//-- Refresh boxes and linked list;
+	box = -1;
+	int ix, iy, iz;
+	for(int i = 0; i < natoms; i++){
+		pointer[i] = -1;
+		ix = int(state[i][0]/boxSize);
+		iy = int(state[i][1]/boxSize);
+		iz = int(state[i][2]/boxSize);
+		pointer[i] = box(ix, iy, iz);
+		box(ix, iy, iz) = i;  
+	}
+}
 
 void writeState(double**& state, int frameNum){
-	/* This function writes the current state of the system to a .xyz file in 
-	ASCII format. */
+	/* This function writes the current state of the 
+	 * system to a .xyz file in ASCII format. */
 
 	char fileName[64];
 	sprintf(fileName, "../../res/States/%04d.xyz", frameNum);
@@ -183,44 +189,46 @@ void writeState(double**& state, int frameNum){
 
 
 void loadState(Matrix& state, int frameNum){
-    char fileName[64];
-    sprintf(fileName, "../../res/States/%04d.xyz", frameNum);
-    
-    FILE* inFile;
-    long lSize;
-    inFile = fopen(fileName, "r");
-    fseek(inFile, 0, SEEK_END);
-    lSize = ftell(inFile);
-    rewind(inFile);
-    
-    fscanf(inFile, "%i", &natoms);
+	char fileName[64];
+	sprintf(fileName, "../../res/States/%04d.xyz", frameNum);
 
-    state = Matrix(natoms,6);
-    double** ppState = state.getArrayPointer();
+	FILE* inFile;
+	long lSize;
+	inFile = fopen(fileName, "r");
+	fseek(inFile, 0, SEEK_END);
+	lSize = ftell(inFile);
+	rewind(inFile);
 
-    cout << "-----\n" << "Loading state " << fileName << endl << "Natoms: " << natoms << endl;
-    char line[512];
-    fgets(line, 512, inFile);
-    fgets(line, 512, inFile);
-    cout << line;
-    for(int i = 0; i < natoms; i++){
-        fscanf(inFile, "%s", line);
-        fscanf(inFile, "%lf", &ppState[i][0]);
-        fscanf(inFile, "%lf", &ppState[i][1]);
-        fscanf(inFile, "%lf", &ppState[i][2]);
-        fscanf(inFile, "%lf", &ppState[i][3]);
-        fscanf(inFile, "%lf", &ppState[i][4]);
-        fscanf(inFile, "%lf", &ppState[i][5]);
-    }
+	// Set the value of natoms
+	fscanf(inFile, "%i", &natoms);
 
-    cout << ppState[0][0] << "  " 
-	 << ppState[0][1] << "  "  
-	 << ppState[0][2] << "  "  
-	 << ppState[0][3] << "  "  
-	 << ppState[0][4] << "  "  
-	 << ppState[0][5] << endl;
-    cout << ".\n.\n.\n";
-    cout <<  "Done loading state\n-----\n";
+	state = Matrix(natoms,6);
+	double** ppState = state.getArrayPointer();
+
+	cout << "-----\n" << "Loading state " 
+	    << fileName << endl 
+	    << "Natoms: " << natoms << endl;
+	char line[512];
+	fgets(line, 512, inFile);
+	fgets(line, 512, inFile);
+	cout << line;
+	// Read the position and velocity of the particles form the file
+	for(int i = 0; i < natoms; i++){
+		fscanf(inFile, "%s", line);
+		fscanf(inFile, "%lf", &ppState[i][0]);
+		fscanf(inFile, "%lf", &ppState[i][1]);
+		fscanf(inFile, "%lf", &ppState[i][2]);
+		fscanf(inFile, "%lf", &ppState[i][3]);
+		fscanf(inFile, "%lf", &ppState[i][4]);
+		fscanf(inFile, "%lf", &ppState[i][5]);
+	}
+	cout <<  "Done loading state\n-----\n";
+
+	// Init simulation variables
+	myNc 	= cbrt(natoms/4.); 
+	L 	= b*myNc;
+	boxSize = 3; // 3 sigma in real units
+	boxes 	= ceil(L/boxSize);
 }
 
 void applyForce(double**& a, double**& state, int i, int j, double& sum){
@@ -272,7 +280,7 @@ void applyForce(double**& a, double**& state, int i, int j, double& sum){
 void force(double**& a, double**& state, Cube &box, 
 		int*& pointer, double &sum){
 
-	Refresh_boxes(box,pointer,state);
+	refreshBoxes(box,pointer,state);
 	int atom1 = 0; int atom2 = 0; 
 	for (int i = 0; i < natoms; i++){
 		a[i][0] = 0;
@@ -385,7 +393,9 @@ void computeEnergy(double**& state){
 			rij[2] = state[i][2] - state[j][2];
 
 			/* Efficient calculation of the three needed numbers */
-			double r2 = rij[0]*rij[0] + rij[1]*rij[1] + rij[2]*rij[2];
+			double r2 = rij[0]*rij[0] 
+				+ rij[1]*rij[1] 
+				+ rij[2]*rij[2];
 			double r2i = 1.0/r2;
 			double r6i = r2i * r2i * r2i;
 			double r12i = r6i * r6i;
@@ -404,7 +414,7 @@ void computeEnergy(double**& state){
 	fclose(outFile);
 }
 
-double computeTemperature(double**& state){
+double computeTemperature(double**& state, bool write){
     
 	double Ek = 0;
 	for(int i = 0; i < natoms; i++){
@@ -413,8 +423,7 @@ double computeTemperature(double**& state){
 				+ state[i][5]*state[i][5]);
 	}
 	double newT = 2 * Ek / (3 * natoms * K_B);
-	cout << "Temperature: " << newT*e0 << " Kelvin." << endl;
-
+	if (write) cout << "Temperature: " << newT*e0 << " Kelvin." << endl;
 	char fileName[64];
 	sprintf(fileName, "../../res/Measurements/Temperature.dat");
 	FILE *outFile;
@@ -485,7 +494,7 @@ void Compute_pressure(double sum, double curT){
 	sum = sum/2;
 	double V = L*L*L;
 	sum = sum/(3*V);
-	sum = sum*mass*mass/(3*b*Nc*Nc*Nc*sigma*e0);
+	sum = sum*mass*mass/(3*b*myNc*myNc*myNc*sigma*e0);
 
 	double rhoKT = 4/(b*b*b)*K_B*curT;
 	rhoKT = rhoKT/(sigma*sigma*sigma)*1e30;

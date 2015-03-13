@@ -280,7 +280,6 @@ namespace physical {
 		// magnetic field B
 		const double	 Tesla	 = Weber/(meter*meter);
 		const double	 Teslas	 = Tesla;
-		const double	 T	 = Tesla;
 		const double	 Gauss	 = Tesla/10000.0;
 		const double	 gamma	 = Tesla/1000000000.0;
 		// magnetic field H
@@ -476,7 +475,6 @@ namespace physical {
 		// area
 		const double	 barn	 = 1.0e-28*meter*meter;
 		const double	 barns	 = barn;
-		const double	 b	 = barn;
 		const double	 circular_inch	= 0.25*pi*inch*inch;
 		const double	 circular_inches	= circular_inch;
 		const double	 circular_mil	= 0.25*pi*mil*mil;
@@ -813,11 +811,14 @@ namespace physical {
 		// nuclear magneton
 		const double	 mu_N	 = 3.15245166e-14*MeV/unit::Tesla;
 		// electron cyclotron frequency/field
-		const double	 E_M_e	 = 1.75881962e11*unit::C/unit::kg*(unit::rad/(unit::s*unit::T));
+		const double	 E_M_e	 = 1.75881962e11
+			*unit::C/unit::kg*(unit::rad/(unit::s*unit::Tesla));
 		// proton cyclotron frequency/field
-		const double	 E_M_P	 = 9.5788309e7*unit::C/unit::kg*(unit::rad/(unit::s*unit::T));
+		const double	 E_M_P	 = 9.5788309e7
+			*unit::C/unit::kg*(unit::rad/(unit::s*unit::Tesla));
 		// gravitational constant
-		const double	 G	 = 6.67259e-11*unit::m*unit::m*unit::m/(unit::kg*unit::s*unit::s);
+		const double	 G	 = 6.67259e-11
+			*unit::m*unit::m*unit::m/(unit::kg*unit::s*unit::s);
 		// Avogadro's constant
 		const double	 N_A	 = 6.0221367e23;
 		// Boltzmann constant
